@@ -25,3 +25,12 @@ class Manga:
         div = self.main_content.select_one('#div_desc_link')
         assert div, f'No description found in {self.id}'
         return div.text
+
+    @cached_property
+    def sC(self):
+        sCats = self.main_content.find_all('div', class_='sCat')
+        d = dict()
+        for sCat in sCats:
+            d[sCat.text] = sCat.find_next_sibling('div', class_='sContent')
+        return d
+
