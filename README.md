@@ -5,7 +5,7 @@ A simple python package for accessing data from MangaUpdates, acting as an
 
 ## Usage
 
-If you want to get info on One Piece (id = `33`)
+If you want to get info on One Piece (`id = 33`)
 
 ```python3
 >>> from mangaupdates import public
