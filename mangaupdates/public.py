@@ -158,5 +158,6 @@ class Manga:
 
     @staticmethod
     def id_from_url(string):
-        matches = re.search(r'id=(\d+)', string, re.IGNORECASE)
+        # only match `id=(\d+)`, not (say) `pid=(\d+)`
+        matches = re.search(r'(?:^|[^a-z])id=(\d+)', string, re.IGNORECASE)
         return int(matches.group(1)) if matches else None
