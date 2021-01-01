@@ -9,7 +9,7 @@ If you want to get info on One Piece (`id = 33`)
 
 ```python3
 >>> from mangaupdates import public
->>> manga = public.Manga(33)
+>>> manga = public.Series(33)
 >>> manga.populate()          # execute GET request
 >>> manga.title
 'One Piece'
