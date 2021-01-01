@@ -115,8 +115,7 @@ class Manga:
 
     @cached_property
     def anime_chapters(self):
-        # return self.entries['Anime Start/End Chapter'].stripped_strings
-        pass
+        return self.entries['Anime Start/End Chapter'].stripped_strings
 
     @cached_property
     def user_reviews(self):
