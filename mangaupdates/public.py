@@ -114,7 +114,7 @@ class Series:
 
     @cached_property
     def anime_chapters(self):
-        return self.entries['Anime Start/End Chapter'].stripped_strings
+        return list(self.entries['Anime Start/End Chapter'].stripped_strings)
 
     @cached_property
     def user_reviews(self):
@@ -284,7 +284,8 @@ class Series:
         for a in a_tags:
             publisher_id = self.id_from_url(a['href']) if a.has_attr('href') else None
             publisher_name = a.text
-            publishers.append((publisher_id, publisher_name))
+            publisher_note = a.next_sibling.strip()
+            publishers.append((publisher_id, publisher_name, publisher_note))
         return publishers
 
     @cached_property
