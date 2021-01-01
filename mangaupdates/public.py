@@ -4,14 +4,13 @@ import re
 from functools import cached_property
 
 
-class Manga:
+class Series:
     domain = 'https://www.mangaupdates.com'
     def __init__(self, manga_id):
         self.id = manga_id
 
     def populate(self):
-        response = requests.get('https://www.mangaupdates.com/series.html',
-                                params={'id': self.id})
+        response = requests.get('https://www.mangaupdates.com/series.html', params={'id': self.id})
         response.raise_for_status()
         self.main_content = BeautifulSoup(response.content, 'lxml').find(id='main_content')
 
@@ -310,9 +309,6 @@ class Manga:
 
     @staticmethod
     def id_from_url(url):
-        ## only match `id=(\d+)`, not (say) `pid=(\d+)`
-        #matches = re.search(r'(?:^|[^a-z])id=(\d+)', string, re.IGNORECASE)
-        #return int(matches.group(1)) if matches else None
         params = params_from_url(url)
         return int(params['id'][0]) if 'id' in params else None
 
