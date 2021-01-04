@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from functools import cached_property
+import time
 
 
 class Series:
@@ -376,3 +377,24 @@ def params_from_url(url):
     from urllib.parse import parse_qs
     parsed = urlparse.urlparse(url)
     return parse_qs(parsed.query)
+
+class ListStats:
+    def __init__(self, series_id):
+        self.id = series_id
+
+    def populate(self, delay=2):
+        # https://www.mangaupdates.com/series.html?act=list&list=read&sid=33
+        url = 'https://www.mangaupdates.com/series.html'
+        params = {'act': 'list',
+                  'sid': self.id}
+
+        self.soups = dict()
+        for list_name in ('read', 'wish', 'unfinished', 'custom'):
+            params['list'] = list_name
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            time.sleep(delay)
+
+            self.soups[list_name] = BeautifulSoup(response.content, 'lxml')
+
+
