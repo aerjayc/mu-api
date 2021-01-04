@@ -404,7 +404,7 @@ class ListStats:
 
         prefix = 'javascript:loadUser(' # for extracting the user id
         suffix = f',"{list_name}")'
-        entries = dict()
+        entries = []
         for a in rows.find_all('a', recursive=False):
             username = a.get_text(strip=True)
             user_id = int(a['href'][len(prefix):-len(suffix)])
@@ -414,7 +414,7 @@ class ListStats:
             else:
                 rating = None
 
-            entries[user_id] = (username, rating)
+            entries.append((user_id, username, rating))
 
         return entries
 
