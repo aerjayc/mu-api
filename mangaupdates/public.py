@@ -397,4 +397,39 @@ class ListStats:
 
             self.soups[list_name] = BeautifulSoup(response.content, 'lxml')
 
+    def general_list(self, list_name):
+        rows = self.soups[list_name].p.find_next_sibling('p')
+        if not rows:
+            return None
 
+        prefix = 'javascript:loadUser(' # for extracting the user id
+        suffix = f',"{list_name}")'
+        entries = dict()
+        for a in rows.find_all('a', recursive=False):
+            username = a.get_text(strip=True)
+            user_id = int(a['href'][len(prefix):-len(suffix)])
+
+            if a.next_sibling == ' - Rating: ':
+                rating = float(a.find_next_sibling('b').get_text(strip=True))
+            else:
+                rating = None
+
+            entries[user_id] = (username, rating)
+
+        return entries
+
+    @cached_property
+    def read(self):
+        return self.general_list('read')
+
+    @cached_property
+    def wish(self):
+        return self.general_list('wish')
+
+    @cached_property
+    def unfinished(self):
+        return self.general_list('unfinished')
+
+    @cached_property
+    def custom(self):
+        return self.general_list('custom')
