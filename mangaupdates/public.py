@@ -52,7 +52,7 @@ class Series:
         series = []
         a_tags = self.entries['Related Series'].find_all('a')
         for a in a_tags:
-            series_id = self.id_from_url(a['href']) if a.has_attr('href') else None
+            series_id = id_from_url(a['href']) if a.has_attr('href') else None
             series_name = a.get_text(strip=True)
             if a.next_sibling.name is None:
                 series_relation = self.remove_outer_parens(a.next_sibling)
@@ -70,7 +70,7 @@ class Series:
         a_tags = self.entries['Groups Scanlating'].find_all('a', href=True)
         for a in a_tags:
             if a.has_attr('title') and (a['title'] == 'Group Info'):
-                group_id = self.id_from_url(a['href'])
+                group_id = id_from_url(a['href'])
                 group_name = a.get_text(strip=True)
                 groups.append((group_id, group_name))
             else:   # for groups without their own pages (e.g. Soka)
@@ -96,7 +96,7 @@ class Series:
                 chapter = elements[element_index + 1].get_text(strip=True)
             elif element.name == 'a' and element.has_attr('title') and element['title'] == 'Group Info':
                 group_name = element.get_text(strip=True)
-                group_id = self.id_from_url(element['href']) if element.has_attr('href') else None
+                group_id = id_from_url(element['href']) if element.has_attr('href') else None
                 groups.append((group_id, group_name))
             elif element.name == 'span':
                 how_long = element.get_text(strip=True)
@@ -137,7 +137,7 @@ class Series:
         reviews = []
         a_tags = self.entries['User Reviews'].find_all('a', href=True)
         for a in a_tags:
-            review_id = self.id_from_url(a['href'])
+            review_id = id_from_url(a['href'])
             review_name = a.get_text(strip=True)
             if a.next_sibling and a.next_sibling.name is None and a.next_sibling.strip().startswith('by '):
                 reviewer = a.next_sibling.strip()[3:]   # remove 'by ' from 'by User'
@@ -233,7 +233,7 @@ class Series:
         a_tags = self.entries['Category Recommendations'].find_all('a')
         cat_recs = []
         for a in a_tags:
-            series_id = self.id_from_url(a['href']) if a.has_attr('href') else None
+            series_id = id_from_url(a['href']) if a.has_attr('href') else None
             series_name = a.get_text(strip=True)
             cat_recs.append((series_id, series_name))
         return cat_recs
@@ -244,7 +244,7 @@ class Series:
         recs = []
         for a in a_tags:
             if a.has_attr('href'):
-                series_id = self.id_from_url(a['href'])
+                series_id = id_from_url(a['href'])
                 if series_id is None:   # to avoid `More...` or `Less...` links
                     continue
                 series_name = a.get_text(strip=True)
@@ -257,7 +257,7 @@ class Series:
         a_tags = self.entries['Author(s)'].find_all('a')
         authors = []
         for a in a_tags:
-            author_id = self.id_from_url(a['href']) if a.has_attr('href') else None
+            author_id = id_from_url(a['href']) if a.has_attr('href') else None
             author_name = a.get_text(strip=True)
             authors.append((author_id, author_name))
         return authors
@@ -267,7 +267,7 @@ class Series:
         a_tags = self.entries['Artist(s)'].find_all('a')
         artists = []
         for a in a_tags:
-            artist_id = self.id_from_url(a['href']) if a.has_attr('href') else None
+            artist_id = id_from_url(a['href']) if a.has_attr('href') else None
             artist_name = a.get_text(strip=True)
             artists.append((artist_id, artist_name))
         return artists
@@ -281,7 +281,7 @@ class Series:
     def original_publisher(self):
         a = self.entries['Original Publisher'].a
         if a:
-            publisher_id = self.id_from_url(a['href']) if a.has_attr('href') else None
+            publisher_id = id_from_url(a['href']) if a.has_attr('href') else None
             if a.has_attr('title') and a['title'] == 'Publisher Info':
                 publisher_name = a.get_text(strip=True)
             elif a.get_text(strip=True) == 'Add':
@@ -321,7 +321,7 @@ class Series:
         a_tags = self.entries['English Publisher'].find_all('a')
         publishers = []
         for a in a_tags:
-            publisher_id = self.id_from_url(a['href']) if a.has_attr('href') else None
+            publisher_id = id_from_url(a['href']) if a.has_attr('href') else None
             publisher_name = a.get_text(strip=True)
             if a.next_sibling and a.next_sibling.name is None:
                 publisher_note = self.remove_outer_parens(a.next_sibling)
@@ -358,11 +358,6 @@ class Series:
         return stats
 
     @staticmethod
-    def id_from_url(url):
-        params = params_from_url(url)
-        return int(params['id'][0]) if 'id' in params else None
-
-    @staticmethod
     def remove_outer_parens(string, strip=True):
         if strip:
             string = string.strip()
@@ -377,6 +372,10 @@ def params_from_url(url):
     from urllib.parse import parse_qs
     parsed = urlparse.urlparse(url)
     return parse_qs(parsed.query)
+
+def id_from_url(url):
+    params = params_from_url(url)
+    return int(params['id'][0]) if 'id' in params else None
 
 class ListStats:
     def __init__(self, series_id):
