@@ -4,20 +4,40 @@ from .public import id_from_url
 import time
 
 
-def get_stats(min_users, delay=3):
+def get_stats(min_users, max_pages=None, delay=10, list_names=None):
+    """Extracts most-listed series on the site.
+
+    Arguments:
+        min_users (int): the point at which the function stops iterating over
+                         pages
+        num_pages (int): the max number of pages to iterate over
+                         (overrides min_users if not None)
+        delay (int):     the number of secs delay after each GET request
+        list_names ([str, str,...]): 
+                         the names of the lists to be searched
+                         must be a subset of {'read', 'wish', 'unfinished'}            
+    Returns: 
+        {list_names[0]: [(series_id, series_name, num_lists), ...],
+         list_names[1]: [...],
+         ...}
+    """
+
     url = 'https://www.mangaupdates.com/stats.html'
+    if list_names is None:
+        list_names = ('read', 'wish', 'unfinished')
+
     lists = dict()
-    for list_name in ('read',):#, 'wish', 'unfinished'):
+    for list_name in list_names:
         page = 1
         num_lists = min_users   # just to pass through first iteration
-        while num_lists >= min_users:
+        while (max_pages is None and num_lists >= min_users) or (max_pages is not None and page < max_pages):
             params = {'list': list_name,
                       'act': 'list',
                       'perpage': 100,
                       'page': page}
             response = requests.get(url, params=params)
+            print('Requested', response.url, end='\t')
             response.raise_for_status()
-            print('requested', response.url)
             time.sleep(delay)
 
             soup = BeautifulSoup(response.content, 'lxml')
@@ -42,9 +62,10 @@ def get_stats(min_users, delay=3):
                     # reinitialize in case the other branch skips
                     # num_lists = None
 
+            print('`num_lists`:', num_lists)
             if num_lists < min_users:
                 break
             page += 1
 
         lists[list_name] = rows
-    return rows
+    return lists
