@@ -2,9 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 from .public import id_from_url
 import time
+import csv
 
 
-def get_most_listed(min_users, max_pages=None, delay=10, list_names=None):
+def get_most_listed(min_users, max_pages=None, delay=10, list_names=None, filename=None):
     """Extracts most-listed series on the site.
 
     Arguments:
@@ -24,11 +25,15 @@ def get_most_listed(min_users, max_pages=None, delay=10, list_names=None):
     if list_names is None:
         list_names = ('read', 'wish', 'unfinished')
 
+    if filename:
+        f = open(filename, 'w', newline='')
+        writer = csv.writer(f)
+
     lists = []
     for list_name in list_names:
         page = 1
         num_lists = min_users   # just to pass through first iteration
-        while (max_pages is None and num_lists >= min_users) or (max_pages is not None and page < max_pages):
+        while (max_pages is None and num_lists >= min_users) or (max_pages is not None and page <= max_pages):
             params = {'list': list_name,
                       'act': 'list',
                       'perpage': 100,
@@ -55,7 +60,9 @@ def get_most_listed(min_users, max_pages=None, delay=10, list_names=None):
                     series_name = cell.a.get_text(strip=True)
 
                     # end of row
-                    rows.append((series_id, series_name, num_lists, list_name))
+                    row = (series_id, series_name, num_lists, list_name)
+                    rows.append(row)
+                    writer.writerows([row])
 
                     # reinitialize in case the other branch skips
                     # num_lists = None
@@ -66,11 +73,11 @@ def get_most_listed(min_users, max_pages=None, delay=10, list_names=None):
             page += 1
 
         lists.extend(rows)
+
+    f.close()
     return lists
 
 def export_most_listed(filename, *args, **kwargs):
-    import csv
-
     lists = get_most_listed(*args, **kwargs)
     with open(filename, 'w', newline='') as f:
         writer = csv.writer(f)
