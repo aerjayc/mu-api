@@ -5,18 +5,22 @@ import time
 import csv
 
 
-def get_most_listed(min_users, max_pages=None, delay=10, list_names=None, filename=None):
+def get_most_listed(min_num_lists, max_pages=None, delay=10, list_names=None, filename=None):
     """Extracts most-listed series on the site.
 
     Arguments:
-        min_users (int): the point at which the function stops iterating over
-                         pages
-        num_pages (int): the max number of pages to iterate over
-                         (overrides min_users if not None)
+        min_num_lists (int): The point at which the function stops iterating over
+                             pages
+        num_pages (int): The max number of pages to iterate over
+                         (overrides min_num_lists if not `None`)
+                         Default is `None`
         delay (int):     the number of secs delay after each GET request
         list_names ([str, str,...]): 
-                         the names of the lists to be searched
+                         The names of the lists to be searched
                          must be a subset of {'read', 'wish', 'unfinished'}            
+        filename (str): path to the file to which the function will export the
+                        extracted list of tuples as a `.csv` file.
+                        If `None` (default), the list will not be exported.
     Returns: 
         [(series_id, series_name, num_lists, list_name), ...]
     """
@@ -32,8 +36,8 @@ def get_most_listed(min_users, max_pages=None, delay=10, list_names=None, filena
     lists = []
     for list_name in list_names:
         page = 1
-        num_lists = min_users   # just to pass through first iteration
-        while (max_pages is None and num_lists >= min_users) or (max_pages is not None and page <= max_pages):
+        num_lists = min_num_lists   # just to pass through first iteration
+        while (max_pages is None and num_lists >= min_num_lists) or (max_pages is not None and page <= max_pages):
             params = {'list': list_name,
                       'act': 'list',
                       'perpage': 100,
@@ -62,19 +66,21 @@ def get_most_listed(min_users, max_pages=None, delay=10, list_names=None, filena
                     # end of row
                     row = (series_id, series_name, num_lists, list_name)
                     rows.append(row)
-                    writer.writerows([row])
+                    if filename:
+                        writer.writerows([row])
 
                     # reinitialize in case the other branch skips
                     # num_lists = None
 
             print('`num_lists`:', num_lists)
-            if num_lists < min_users:
+            if num_lists < min_num_lists:
                 break
             page += 1
 
         lists.extend(rows)
 
-    f.close()
+    if filename:
+        f.close()
     return lists
 
 def export_most_listed(filename, *args, **kwargs):
