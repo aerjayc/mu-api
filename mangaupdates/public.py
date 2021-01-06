@@ -381,14 +381,17 @@ class ListStats:
     def __init__(self, series_id):
         self.id = series_id
 
-    def populate(self, delay=2):
+    def populate(self, delay=2, list_names=None):
         # https://www.mangaupdates.com/series.html?act=list&list=read&sid=33
+        if list_names is None:
+            list_names = ('read', 'wish', 'unfinished')
+
         url = 'https://www.mangaupdates.com/series.html'
         params = {'act': 'list',
                   'sid': self.id}
 
         self.soups = dict()
-        for list_name in ('read', 'wish', 'unfinished', 'custom'):
+        for list_name in list_names:
             params['list'] = list_name
             response = requests.get(url, params=params)
             response.raise_for_status()
@@ -432,3 +435,4 @@ class ListStats:
     @cached_property
     def custom(self):
         return self.general_list('custom')
+
