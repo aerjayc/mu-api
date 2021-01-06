@@ -5,7 +5,7 @@ import time
 import csv
 
 
-def get_most_listed(min_num_lists, max_pages=None, delay=10, list_names=None, filename=None):
+def get_most_listed(min_num_lists, first_page=1, max_pages=None, delay=10, list_names=None, filename=None):
     """Extracts most-listed series on the site.
 
     Arguments:
@@ -29,13 +29,13 @@ def get_most_listed(min_num_lists, max_pages=None, delay=10, list_names=None, fi
     if list_names is None:
         list_names = ('read', 'wish', 'unfinished')
 
-    if filename:
-        f = open(filename, 'w', newline='')
+    if filename is not None:
+        f = open(filename, 'a', newline='')
         writer = csv.writer(f)
-
-    lists = []
+    else:
+        lists = []
     for list_name in list_names:
-        page = 1
+        page = first_page
         num_lists = min_num_lists   # just to pass through first iteration
         while (max_pages is None and num_lists >= min_num_lists) or (max_pages is not None and page <= max_pages):
             params = {'list': list_name,
@@ -50,7 +50,8 @@ def get_most_listed(min_num_lists, max_pages=None, delay=10, list_names=None, fi
             soup = BeautifulSoup(response.content, 'lxml')
             table = soup.find(id='main_content').find('div', class_='row no-gutters')
 
-            rows = []
+            if filename is None:
+                rows = []
             cell = table.div.find_next_sibling('div')
             while (cell := cell.find_next_sibling('div')):
                 if 'col-1' in cell['class']:    # num_lists
@@ -65,8 +66,9 @@ def get_most_listed(min_num_lists, max_pages=None, delay=10, list_names=None, fi
 
                     # end of row
                     row = (series_id, series_name, num_lists, list_name)
-                    rows.append(row)
-                    if filename:
+                    if filename is None:
+                        rows.append(row)
+                    else:
                         writer.writerows([row])
 
                     # reinitialize in case the other branch skips
@@ -77,7 +79,8 @@ def get_most_listed(min_num_lists, max_pages=None, delay=10, list_names=None, fi
                 break
             page += 1
 
-        lists.extend(rows)
+        if filename is None:
+            lists.extend(rows)
 
     if filename:
         f.close()
