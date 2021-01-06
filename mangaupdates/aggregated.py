@@ -4,7 +4,7 @@ from .public import id_from_url
 import time
 
 
-def get_stats(min_users, max_pages=None, delay=10, list_names=None):
+def get_most_listed(min_users, max_pages=None, delay=10, list_names=None):
     """Extracts most-listed series on the site.
 
     Arguments:
@@ -17,16 +17,14 @@ def get_stats(min_users, max_pages=None, delay=10, list_names=None):
                          the names of the lists to be searched
                          must be a subset of {'read', 'wish', 'unfinished'}            
     Returns: 
-        {list_names[0]: [(series_id, series_name, num_lists), ...],
-         list_names[1]: [...],
-         ...}
+        [(series_id, series_name, num_lists, list_name), ...]
     """
 
     url = 'https://www.mangaupdates.com/stats.html'
     if list_names is None:
         list_names = ('read', 'wish', 'unfinished')
 
-    lists = dict()
+    lists = []
     for list_name in list_names:
         page = 1
         num_lists = min_users   # just to pass through first iteration
@@ -57,7 +55,7 @@ def get_stats(min_users, max_pages=None, delay=10, list_names=None):
                     series_name = cell.a.get_text(strip=True)
 
                     # end of row
-                    rows.append((series_id, series_name, num_lists))
+                    rows.append((series_id, series_name, num_lists, list_name))
 
                     # reinitialize in case the other branch skips
                     # num_lists = None
@@ -67,5 +65,14 @@ def get_stats(min_users, max_pages=None, delay=10, list_names=None):
                 break
             page += 1
 
-        lists[list_name] = rows
+        lists.extend(rows)
     return lists
+
+def export_most_listed(filename, *args, **kwargs):
+    import csv
+
+    lists = get_most_listed(*args, **kwargs)
+    with open(filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerows(lists)
+
