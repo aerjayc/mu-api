@@ -31,6 +31,9 @@ If you want to get info on One Piece (`id = 33`)
 - [ ] Search
   - [ ] Basic Search
   - [ ] Advanced Search
+- [ ] Export aggregated stuff to `.csv` files
+  - [ ] for top-N listers
+  - [ ] for most recent releases
 
 ## Scripts
 
