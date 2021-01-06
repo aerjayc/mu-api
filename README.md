@@ -35,7 +35,7 @@ If you want to get info on One Piece (`id = 33`)
   - [x] for top-N listers
   - [ ] for most recent releases
 - [ ] Export to `.csv` during iteration (to avoid losses)
-  - [ ] for top-N listers
+  - [x] for top-N listers
   - [ ] for most recent releases
 - [ ] Graceful handling of `Ctrl-C` by iterating functions (e.g. by returning a partial list instead of `None`)
   - [ ] for top-N listers
