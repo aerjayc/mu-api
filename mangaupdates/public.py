@@ -7,8 +7,8 @@ import time
 
 class Series:
     domain = 'https://www.mangaupdates.com'
-    def __init__(self, manga_id):
-        self.id = manga_id
+    def __init__(self, series_id):
+        self.id = series_id
 
     def populate(self):
         response = requests.get('https://www.mangaupdates.com/series.html', params={'id': self.id})

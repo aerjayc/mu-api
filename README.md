@@ -22,3 +22,16 @@ If you want to get info on One Piece (`id = 33`)
 >>> manga.groups_scanlating
 [(5816, '/a/nonymous'), (2931, 'A-Team'), (2595, 'Akatsuki'), ...
 ```
+
+# TODO
+
+## API
+
+- [ ] Get top-N most recent releases
+- [ ] Search
+  - [ ] Basic Search
+  - [ ] Advanced Search
+
+## Scripts
+
+- [ ] Make dataset out of the read/wish/unfinished lists of the top-N series
