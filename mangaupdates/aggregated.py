@@ -84,7 +84,8 @@ def get_most_listed(min_num_lists, first_page=1, max_pages=None, delay=10, list_
 
     if filename:
         f.close()
-    return lists
+    else:
+        return lists
 
 def export_most_listed(filename, *args, **kwargs):
     lists = get_most_listed(*args, **kwargs)
