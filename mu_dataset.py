@@ -63,7 +63,7 @@ if __name__ == '__main__':
     parser.add_argument(metavar='OUTPUT', dest='output',
                         help='csv file where the output will be saved.')
     parser.add_argument('--headers', action='store_true',
-                        help='there are headers in the input file')
+                        help='there are headers in the input file (overrides --column)')
     parser.add_argument('-n', default=10, dest='N', help='# of series to crawl.')
     parser.add_argument('-m', '--mode', default='n',
                         help="'n': abort if OUTPUT file already exists (default)."
@@ -75,6 +75,8 @@ if __name__ == '__main__':
     parser.add_argument('--all', action='store_true',
                         help='"read", "wish", and "unfinished" lists will all be '
                              'crawled, otherwise only "read" will be crawled.')
+    parser.add_argument('-c', '--column', default=0,
+                        help='column (0-indexed) of series id (overriden by --headers')
     args = parser.parse_args()
 
     list_names = ['read']
