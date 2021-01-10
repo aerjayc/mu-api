@@ -31,8 +31,8 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
                     last_line = f.readline().decode()
 
                 split_line = last_line.split(',')
-                last_userid = int(split_line[0])
                 last_sid = int(split_line[-1])
+                last_list_name = split_line[-2]
                 last_sid_index = series_ids.index(last_sid)
                 series_ids = series_ids[last_sid_index:]
             elif mode == 'w':
@@ -58,27 +58,25 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
 
     for i, sid in enumerate(series_ids):
         lists = public.ListStats(sid)
-        print(sid, end='\t', flush=True)
+        print(sid, end='\t\t', flush=True)
         lists.populate(list_names=list_names)
         time.sleep(delay)
 
 
         for key in list_names:
-            tuples = lists.general_list(key)
-
-            # resume progress if mode='a'
-            if i == 0 and resuming:
-                for j, t in enumerate(tuples):
-                    if last_userid == t[0]:
-                        break
-                last_userid_index = j if last_userid == t[0] else None
-                if last_userid_index < len(tuples)-1:
-                    tuples = tuples[last_userid_index:]
-                else:
-                    print(key, '0 rows (resuming).', sep='\t')
+            if resuming and i == 0:
+                if list_names.index(key) <= list_names.index((last_list_name)):
+                    print('0 rows (resuming).')
                     continue
-
-            new_rows = [(*val, key, sid) for val in tuples]
+                resuming = False
+                # Since this program only writes to the file every iteration of
+                # a list of a series, we know that on the previous run, the
+                # program probably stopped between (instead of in the middle
+                # of) writing to the file.
+                # Thus, we assume that if the last entry on the file has
+                # some series id `last_sid` and list name `last_list_name`, we
+                # can simply skip all entries before that.
+            new_rows = [(*val, key, sid) for val in lists.general_list(key)]
             print(key, f'{len(new_rows)} rows.', sep='\t')
             if filename is None:
                 rows.extend(new_rows)
