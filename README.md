@@ -44,3 +44,4 @@ If you want to get info on One Piece (`id = 33`)
 ## Scripts
 
 - [ ] Make dataset out of the read/wish/unfinished lists of the top-N series
+- [ ] Ability to resume to current progress if errored on previous run
