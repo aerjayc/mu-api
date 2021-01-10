@@ -2,6 +2,7 @@ from mangaupdates import public
 import csv
 import pandas as pd
 import time
+import os
 import os.path
 import argparse
 
@@ -9,13 +10,31 @@ import argparse
 def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n'):
 
     col_names = ('userid', 'username', 'score', 'listname', 'seriesid')
+    resuming = False
     if filename is not None:
+        write_col_names = True
         if os.path.isfile(filename):
             if mode == 'n':
                 print(filename, 'exists. Aborting...')
                 return
             elif mode == 'a':
                 print(filename, 'exists. Rows will be appended.')
+                resuming = True
+                write_col_names = False
+                
+                # get latest sid in final line
+                # https://stackoverflow.com/a/54278929
+                with open(filename, 'rb') as f:
+                    f.seek(-2, os.SEEK_END)
+                    while f.read(1) != b'\n':
+                        f.seek(-2, os.SEEK_CUR)
+                    last_line = f.readline().decode()
+
+                split_line = last_line.split(',')
+                last_userid = int(split_line[0])
+                last_sid = int(split_line[-1])
+                last_sid_index = series_ids.index(last_sid)
+                series_ids = series_ids[last_sid_index:]
             elif mode == 'w':
                 print(filename, 'exists. Overwriting...')
             else:
@@ -26,7 +45,9 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
             mode = 'w'
         f = open(filename, mode, newline='')
         writer = csv.writer(f)
-        writer.writerows([col_names])
+        
+        if write_col_names:
+            writer.writerows([col_names])
 
     if filename is None:
         rows = []
@@ -35,15 +56,30 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
         list_names = ('read', 'wish', 'unfinished')
     print('Lists:', list_names)
 
-    for sid in series_ids:
+    for i, sid in enumerate(series_ids):
         lists = public.ListStats(sid)
-        print(sid, end='\t')
+        print(sid, end='\t', flush=True)
         lists.populate(list_names=list_names)
         time.sleep(delay)
 
+
         for key in list_names:
-            new_rows = [(*val, key, sid) for val in lists.general_list(key)]
-            print(f'{key}:', len(new_rows), 'rows.')
+            tuples = lists.general_list(key)
+
+            # resume progress if mode='a'
+            if i == 0 and resuming:
+                for j, t in enumerate(tuples):
+                    if last_userid == t[0]:
+                        break
+                last_userid_index = j if last_userid == t[0] else None
+                if last_userid_index < len(tuples)-1:
+                    tuples = tuples[last_userid_index:]
+                else:
+                    print(key, '0 rows (resuming).', sep='\t')
+                    continue
+
+            new_rows = [(*val, key, sid) for val in tuples]
+            print(key, f'{len(new_rows)} rows.', sep='\t')
             if filename is None:
                 rows.extend(new_rows)
             else:
@@ -77,6 +113,9 @@ if __name__ == '__main__':
                              'crawled, otherwise only "read" will be crawled.')
     parser.add_argument('-c', '--column', default=0,
                         help='column (0-indexed) of series id (overriden by --headers')
+    parser.add_argument('--resume', action='store_true',
+                        help="equivalent to mode='a'. resumes progress if stopped"
+                        " previously. overrides --force.")
     args = parser.parse_args()
 
     list_names = ['read']
@@ -84,7 +123,9 @@ if __name__ == '__main__':
         list_names.extend(['wish', 'unfinished'])
 
     mode = args.mode
-    if args.force:
+    if args.resume:
+        mode = 'a'
+    elif args.force:
         mode = 'w'
 
     # Get unique series IDs from file
