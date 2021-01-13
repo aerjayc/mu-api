@@ -7,13 +7,18 @@ import time
 
 class Series:
     domain = 'https://www.mangaupdates.com'
-    def __init__(self, series_id):
+    def __init__(self, series_id, session=None):
         self.id = series_id
 
+        if session is None:
+            self.session = requests.Session()
+        else:
+            self.session = session
+
     def populate(self):
-        response = requests.get('https://www.mangaupdates.com/series.html', params={'id': self.id})
-        response.raise_for_status()
-        self.main_content = BeautifulSoup(response.content, 'lxml').find(id='main_content')
+        self.response = self.session.get(f'{self.domain}/series.html', params={'id': self.id})
+        self.response.raise_for_status()
+        self.main_content = BeautifulSoup(self.response.content, 'lxml').find(id='main_content')
 
     @cached_property
     def title(self):
@@ -380,8 +385,13 @@ def id_from_url(url):
     return int(params['id'][0]) if 'id' in params else None
 
 class ListStats:
-    def __init__(self, series_id):
+    def __init__(self, series_id, session=None):
         self.id = series_id
+
+        if session is None:
+            self.session = requests.Session()
+        else:
+            self.session = session
 
     def populate(self, delay=2, list_names=None):
         # https://www.mangaupdates.com/series.html?act=list&list=read&sid=33
@@ -395,7 +405,7 @@ class ListStats:
         self.soups = dict()
         for list_name in list_names:
             params['list'] = list_name
-            response = requests.get(url, params=params)
+            response = self.session.get(url, params=params)
             response.raise_for_status()
             time.sleep(delay)
 
