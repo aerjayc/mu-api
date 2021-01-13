@@ -56,6 +56,8 @@ class Series:
             series_name = a.get_text(strip=True)
             if a.next_sibling.name is None:
                 series_relation = self.remove_outer_parens(a.next_sibling)
+            else:
+                series_relation = None
             series.append((series_id, series_name, series_relation))
 
         return series
