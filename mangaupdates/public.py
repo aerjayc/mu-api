@@ -104,6 +104,13 @@ class ActivityStats:
     semiannual: Rank = None
     yearly: Rank = None
 
+@dataclass
+class ListEntry:
+    series_id: int
+    user_id: int
+    username: str
+    rating: int = None
+
 
 class Series:
     domain = 'https://www.mangaupdates.com'
@@ -558,7 +565,7 @@ class ListStats:
             self.soups[list_name] = BeautifulSoup(response.content, 'lxml')
 
         # delete cache
-        cached = ('read', 'wish', 'unfinished', 'custom')
+        cached = ('read', 'wish', 'unfinished')
         for key in cached:
             if key in self.__dict__:
                 del self.__dict__[key]
@@ -574,13 +581,12 @@ class ListStats:
         for a in rows.find_all('a', recursive=False):
             username = a.get_text(strip=True)
             user_id = int(a['href'][len(prefix):-len(suffix)])
+            entry = ListEntry(series_id=self.id, user_id=user_id, username=username)
 
             if a.next_sibling == ' - Rating: ':
-                rating = float(a.find_next_sibling('b').get_text(strip=True))
-            else:
-                rating = None
+                entry.rating = float(a.find_next_sibling('b').get_text(strip=True))
 
-            entries.append((user_id, username, rating))
+            entries.append(entry)
 
         return entries
 
@@ -595,8 +601,3 @@ class ListStats:
     @cached_property
     def unfinished(self):
         return self.general_list('unfinished')
-
-    @cached_property
-    def custom(self):
-        return self.general_list('custom')
-
