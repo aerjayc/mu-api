@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-from collections import namedtuple
 from functools import cached_property
 import time
 from dataclasses import dataclass, field
