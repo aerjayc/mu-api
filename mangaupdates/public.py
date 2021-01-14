@@ -10,7 +10,6 @@ from typing import List, Any
 
 # TODO: convert lists to generators
 # TODO: convert `x = d[key] if key in d else None` to `x = d.get(key)`
-# TODO: conver `x = dict()` to `x ={}`
 # TODO: make private methods as needed
 
 @dataclass
@@ -165,7 +164,7 @@ class Series:
     @cached_property
     def entries(self):
         sCats = self.main_content.find_all('div', class_='sCat')
-        entries = dict()
+        entries = {}
         for sCat in sCats:
             if sCat.b:
                 key = next(sCat.b.children).strip() # to avoid <b>Name <div>something else</div></b>
@@ -312,7 +311,7 @@ class Series:
                 ur.bayesian_average = float(matches.group(0))
 
         histogram = div.find_all('div', class_='row no-gutters')
-        distribution = dict()
+        distribution = {}
         for bin in histogram:
             if bin.div:
                 key = bin.div.get_text(strip=True)
@@ -553,7 +552,7 @@ class ListStats:
         params = {'act': 'list',
                   'sid': self.id}
 
-        self.soups = dict()
+        self.soups = {}
         for list_name in list_names:
             params['list'] = list_name
             response = self.session.get(url, params=params)
