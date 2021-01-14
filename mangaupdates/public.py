@@ -6,22 +6,23 @@ from functools import cached_property
 import time
 from dataclasses import dataclass, field
 from typing import List, Any
+import exceptions
 
 
 # TODO: convert lists to generators
 # TODO: make private methods as needed
 # TODO: use `recursive=False` on `find`s or `find_all`s if possible
-# TODO: allow errors to occur to notice bugs
+# TODO: use `href=True` on `find('a')` or `find_all('a')`s
 
 @dataclass
 class Group:
+    name: str
     id: int = None
-    name: str = None
 
 @dataclass
 class RelatedSeries:
     series: Any     # should be Series (used `Any` to avoid recursive definition)
-    relation: str = None
+    relation: str
 
     def __repr__(self):
         return f'RelatedSeries({repr(self.series)}, relation={repr(self.relation)})'
@@ -36,29 +37,29 @@ class Release:
 
 @dataclass
 class UserReview:
-    id: int = None
-    reviewer: str = None
-    name: str = None
+    id: int
+    reviewer: str
+    name: str
 
 @dataclass
 class ForumStats:
-    id: int = None
-    topics: int = 0
-    posts: int = 0
+    id: int
+    topics: int
+    posts: int
 
 @dataclass
 class UserRating:
-    average: float = None
-    bayesian_average: float = None
-    votes: int = None
-    distribution: dict = field(default_factory=dict)
+    average: float
+    bayesian_average: float
+    votes: int
+    distribution: dict
 
 @dataclass
 class Category:
-    name: str = None
-    score: int = None
-    agree: int = None
-    disagree: int = None
+    name: str
+    score: int
+    agree: int
+    disagree: int
 
     def __repr__(self):
         return (f'Category({repr(self.name)}, score={self.score}, '
@@ -66,16 +67,16 @@ class Category:
 
 @dataclass
 class Author:
-    name: str = None
-    id: int = None
+    name: str
+    id: int
 
     def __repr__(self):
         return f'Author({repr(self.name)}, id={self.id})'
 
 @dataclass
 class Publisher:
-    name: str = None
-    id: int = None
+    name: str
+    id: int
     note: str = None
 
     def __repr__(self):
@@ -83,8 +84,8 @@ class Publisher:
 
 @dataclass
 class Magazine:
-    name: str = None
-    url: str = None
+    name: str
+    url: str
     parent: str = None
 
     def __repr__(self):
@@ -93,7 +94,7 @@ class Magazine:
 @dataclass
 class Rank:
     position: int
-    change: int
+    change: int = 0
 
 @dataclass
 class ActivityStats:
@@ -184,11 +185,9 @@ class Series:
         for a in a_tags:
             title = a.get_text(strip=True)
             series_id = id_from_url(a.get('href'))
-            rs = RelatedSeries(Series(series_id, tentative_title=title))
-
-            if a.next_sibling.name is None:
-                rs.relation = self.remove_outer_parens(a.next_sibling)
-            series.append(rs)
+            relation = self.remove_outer_parens(a.next_sibling)
+            series.append(RelatedSeries(series=Series(series_id, tentative_title=title),
+                                        relation=relation))
         return series
 
     @cached_property
@@ -200,15 +199,11 @@ class Series:
         groups = []
         a_tags = self.entries['Groups Scanlating'].find_all('a', href=True)
         for a in a_tags:
-            group = Group()
+            if a['href'].startswith('javascript'):  # skip 'More...' and 'Less...'
+                continue
+            group = Group(name=a.get_text(strip=True))
             if a.has_attr('title') and (a['title'] == 'Group Info'):
                 group.id = id_from_url(a['href'])
-                group.name = a.get_text(strip=True)
-            else:   # for groups without their own pages (e.g. Soka)
-                matches = re.search(r'https?://(?:www\.)?mangaupdates.com/releases\.html\?search=([\w\d]+)',
-                                    a['href'], re.IGNORECASE)
-                if matches: # use urldecode?
-                    group.name = matches.group(1)
             groups.append(group)
         return groups
 
@@ -224,11 +219,10 @@ class Series:
             elif element == 'c.':
                 release.chapter = elements[element_index + 1].get_text(strip=True)
             elif element.name == 'a' and element.has_attr('title') and element['title'] == 'Group Info':
-                group = Group()
-                group.name = element.get_text(strip=True)
-                if element.has_attr('href'):
-                    group.id = id_from_url(element['href'])
-                release.groups.append(group)
+                release.groups.append(Group(name=element.get_text(strip=True),
+                                            id=id_from_url(element['href'])))
+            elif element.previous_element.name is None and element.previous_element.strip() == 'by':
+                release.groups.append(Group(name=element.get_text(strip=True)))
             elif element.name == 'span':
                 release.elapsed = element.get_text(strip=True)
             elif element.name == 'br':
@@ -263,53 +257,61 @@ class Series:
         reviews = []
         a_tags = self.entries['User Reviews'].find_all('a', href=True)
         for a in a_tags:
-            review = UserReview()
-            review.id = id_from_url(a['href'])
-            review.name = a.get_text(strip=True)
-            if a.next_sibling and a.next_sibling.name is None and a.next_sibling.strip().startswith('by '):
-                review.reviewer = a.next_sibling.strip()[3:]   # remove 'by ' from 'by User'
-            reviews.append(review)
+            review_id = id_from_url(a['href'])
+            review_name = a.get_text(strip=True)
+            reviewer = a.next_sibling.strip()[3:]   # remove 'by ' from 'by User'
+            reviews.append(UserReview(review_id, review_name, reviewer))
         return reviews
 
     @cached_property
     def forum(self):
         string = next(self.entries['Forum'].stripped_strings)
 
-        forum_stats = ForumStats()
-        matches = re.search(r'(\d+) topics, (\d+) posts', string, re.IGNORECASE)
-        if matches:
-            forum_stats.topics = int(matches.group(1))
-            forum_stats.posts = int(matches.group(2))
+        pattern = r'(\d+) topics, (\d+) posts'
+        matches = re.search(pattern, string, re.IGNORECASE)
+        if not matches:
+            raise exceptions.RegexParseError(pattern=pattern, string=string)
+        topics = int(matches.group(1))
+        posts = int(matches.group(2))
 
         # extract forum id
         params = params_from_url(self.entries['Forum'].a['href'])
-        if 'fid' in params:
-            forum_stats.id = int(params['fid'][0])
+        fid = int(params['fid'][0])
 
-        return forum_stats
+        return ForumStats(fid, topics, posts)
 
     @cached_property
     def user_rating(self):
         div = self.entries['User Rating']
-        ur = UserRating()
 
         string = div.next_element.strip()
-        matches = re.search(r'Average: (\d+\.?\d*)', string, re.IGNORECASE)
-        ur.average = float(matches.group(1)) if matches else None
+        pattern = r'Average: (\d+\.?\d*)'
+        matches = re.search(pattern, string, re.IGNORECASE)
+        if not matches:
+            raise exceptions.RegexParseError(pattern, string)
+        average = float(matches.group(1))
 
         span = div.find('span')
         if span and span.next_sibling and span.next_sibling.name is None:
             string = span.next_sibling.strip()
-            matches = re.search(r'(\d+) votes', string, re.IGNORECASE)
-            if matches:
-                ur.votes = int(matches.group(1))
+            pattern = r'(\d+) votes'
+            matches = re.search(pattern, string, re.IGNORECASE)
+            if not matches:
+                raise exceptions.RegexParseError(pattern=pattern, string=string)
+            votes = int(matches.group(1))
+        else:
+            raise exceptions.ParseError('User Rating (Votes)')
 
         b = div.find('b')
         if b:
             string = b.get_text(strip=True)
-            matches = re.search(r'\d+\.?\d*', string, re.IGNORECASE)
-            if matches:
-                ur.bayesian_average = float(matches.group(0))
+            pattern = r'\d+\.?\d*'
+            matches = re.search(pattern, string, re.IGNORECASE)
+            if not matches:
+                raise exceptions.RegexParseError(pattern=pattern, string=string)
+            bayesian_average = float(matches.group(0))
+        else:
+            raise exceptions.ParseError('User Rating (Bayesian Average)')
 
         histogram = div.find_all('div', class_='row no-gutters')
         distribution = {}
@@ -317,9 +319,9 @@ class Series:
             if bin.div:
                 key = bin.div.get_text(strip=True)
                 val = next(bin.find('div', class_='text-right').stripped_strings)
-                ur.distribution[key] = val
+                distribution[key] = val
 
-        return ur
+        return UserRating(average, bayesian_average, votes, distribution)
 
     @cached_property
     def last_updated(self):
@@ -345,14 +347,15 @@ class Series:
         score_pattern = re.compile(r'Score: (\d+) \((\d+),(\d+)\)', re.IGNORECASE)
         for a in a_tags:
             if a.has_attr('title'):
-                cat = Category()
-                cat.name = a.get_text(strip=True)
-                matches = re.search(score_pattern, a['title'])
-                if matches:
-                    cat.score = int(matches.group(1))
-                    cat.agree = int(matches.group(2))
-                    cat.disagree = int(matches.group(3))
-                cats.append(cat)
+                string = a['title']
+                matches = re.search(score_pattern, string)
+                if not matches:
+                    raise exceptions.RegexParseError(pattern=score_pattern.pattern, string=string)
+                score = int(matches.group(1))
+                agree = int(matches.group(2))
+                disagree = int(matches.group(3))
+                name = a.get_text(strip=True)
+                cats.append(Category(name, score, agree, disagree))
         return cats
 
     @cached_property
@@ -385,11 +388,8 @@ class Series:
         a_tags = self.entries['Author(s)'].find_all('a')
         authors = []
         for a in a_tags:
-            author = Author()
-            if a.has_attr('href'):
-                author.id = id_from_url(a['href'])
-            author.name = a.get_text(strip=True)
-            authors.append(author)
+            authors.append(Author(id=id_from_url(a['href']),
+                                  name=a.get_text(strip=True)))
         return authors
 
     @cached_property
@@ -397,11 +397,8 @@ class Series:
         a_tags = self.entries['Artist(s)'].find_all('a')
         artists = []
         for a in a_tags:
-            artist = Author()
-            if a.has_attr('href'):
-                artist.id = id_from_url(a['href'])
-            artist.name = a.get_text(strip=True)
-            artists.append(artist)
+            artists.append(Author(id=id_from_url(a['href']),
+                                  name=a.get_text(strip=True)))
         return artists
 
     @cached_property
@@ -413,15 +410,14 @@ class Series:
     def original_publisher(self):
         a = self.entries['Original Publisher'].a
         if a:
-            publisher = Publisher()
-            publisher.id = id_from_url(a.get('href'))
+            publisher_id = id_from_url(a.get('href'))
             if a.has_attr('title') and a['title'] == 'Publisher Info':
-                publisher.name = a.get_text(strip=True)
+                publisher_name = a.get_text(strip=True)
             elif a.get_text(strip=True) == 'Add':
-                publisher.name = a.parent.get_text(strip=True)[:-len('\xa0[Add]')]
+                publisher_name = a.parent.get_text(strip=True)[:-len('\xa0[Add]')]
             else:
-                return None
-            return publisher
+                raise exceptions.ParseError('Original Publisher (Name)')
+            return Publisher(publisher_id, publisher_name)
         else:
             return None
 
@@ -430,10 +426,8 @@ class Series:
         a_tags = self.entries['Serialized In (magazine)'].find_all('a')
         magazines = []
         for a in a_tags:
-            magazine = Magazine()
-            if a.has_attr('href'):
-                magazine.url = f"{self.domain}/{a['href']}"
-            magazine.name = a.get_text(strip=True)
+            magazine = Magazine(url=f"{self.domain}/{a['href']}",
+                                name=a.get_text(strip=True))
             if a.next_sibling and a.next_sibling.name is None:
                 magazine.parent = self.remove_outer_parens(a.next_sibling)
             magazines.append(magazine)
@@ -454,10 +448,8 @@ class Series:
         a_tags = self.entries['English Publisher'].find_all('a')
         publishers = []
         for a in a_tags:
-            publisher = Publisher()
-            if a.has_attr('href'):
-                publisher.id = id_from_url(a['href'])
-            publisher.name = a.get_text(strip=True)
+            publisher = Publisher(id=id_from_url(a['href']),
+                                  name=a.get_text(strip=True))
             if a.next_sibling and a.next_sibling.name is None:
                 publisher.note = self.remove_outer_parens(a.next_sibling)
             publishers.append(publisher)
@@ -470,11 +462,14 @@ class Series:
         for a in a_tags:
             interval = a.get_text(strip=True)
             b = a.find_next_sibling('b')
-            change = int(b.get_text(strip=True)) if b else None
+            if not b:
+                raise exceptions.ParseError('Activity Stats (Position)')
+            position = int(b.get_text(strip=True))
+            rank = Rank(position)
+
             img = a.find_next_sibling('img')
             if img and img.next_sibling and img.next_sibling.name is None:
-                position = int(self.remove_outer_parens(img.next_sibling))
-            rank = Rank(position, change)
+                rank.change = int(self.remove_outer_parens(img.next_sibling))
 
             if interval == 'Weekly':
                 stats.weekly = rank
@@ -497,7 +492,7 @@ class Series:
             if b.next_sibling and b.next_sibling.name is None:
                 list_name = b.next_sibling.strip()
             else:
-                list_name = None
+                raise exceptions.ParseError('List Stats (List Name)')
             key = ''.join((list_name[:-len(' lists')], '_total'))
             stats[key] = num_users
         return ListStats(self.id, **stats)
