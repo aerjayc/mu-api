@@ -11,7 +11,7 @@ from typing import List, Any
 # TODO: convert lists to generators
 # TODO: convert `x = d[key] if key in d else None` to `x = d.get(key)`
 # TODO: conver `x = dict()` to `x ={}`
-# TODO: add `__repr__` methods
+# TODO: make private methods as needed
 
 @dataclass
 class Group:
@@ -20,11 +20,15 @@ class Group:
 
 @dataclass
 class RelatedSeries:
-    series: Any
+    series: Any     # should be Series (used `Any` to avoid recursive definition)
     relation: str = None
+
+    def __repr__(self):
+        return f'RelatedSeries({repr(self.series)}, relation={repr(self.relation)})'
 
 @dataclass
 class Release:
+    series_id: int
     volume: str = None
     chapter: str = None
     groups: List[Group] = field(default_factory=list)
@@ -44,7 +48,6 @@ class ForumStats:
 
 @dataclass
 class UserRating:
-    # average, bayesian_average, votes, distribution
     average: float = None
     bayesian_average: float = None
     votes: int = None
@@ -57,27 +60,35 @@ class Category:
     agree: int = None
     disagree: int = None
 
-@dataclass
-class Recommendation:
-    id: int = None
-    name: str = None
+    def __repr__(self):
+        return (f'Category({repr(self.name)}, score={self.score}, '
+                f'agree={self.agree}, disagree={self.disagree})')
 
 @dataclass
 class Author:
-    id: int = None
     name: str = None
+    id: int = None
+
+    def __repr__(self):
+        return f'Author({repr(self.name)}, id={self.id})'
 
 @dataclass
 class Publisher:
-    id: int = None
     name: str = None
+    id: int = None
     note: str = None
+
+    def __repr__(self):
+        return f'Publisher({repr(self.name)}, id={self.id}, note={repr(self.note)})'
 
 @dataclass
 class Magazine:
     name: str = None
     url: str = None
     parent: str = None
+
+    def __repr__(self):
+        return f'Magazine({repr(self.name)}, url={repr(self.url)}, parent={repr(self.parent)})'
 
 @dataclass
 class Rank:
@@ -95,16 +106,25 @@ class ActivityStats:
 
 class Series:
     domain = 'https://www.mangaupdates.com'
-    def __init__(self, series_id, session=None, tentative_title=None):
-        self.id = series_id
+    def __init__(self, id, session=None, tentative_title=None):
+        self.id = id
 
         if session is None:
             self.session = requests.Session()
         else:
             self.session = session
 
-        if tentative_title is None:
+        if tentative_title is not None:
             self.title = tentative_title
+            self.__uses_tentative_title = True
+        else:
+            self.__uses_tentative_title = False
+
+    def __repr__(self):
+        if self.__uses_tentative_title:
+            return f'Series(id={self.id}, tentative_title={repr(self.title)})'
+        else:
+            return f'Series(id={self.id})'
 
     def populate(self):
         self.response = self.session.get(f'{self.domain}/series.html', params={'id': self.id})
@@ -196,7 +216,7 @@ class Series:
     def latest_releases(self):
         elements = list(self.entries['Latest Release(s)'].children)
         releases = []
-        release = Release()
+        release = Release(self.id)
         for element_index in range(len(elements)):
             element = elements[element_index]
             if element == 'v.':
@@ -213,7 +233,7 @@ class Series:
                 release.elapsed = element.get_text(strip=True)
             elif element.name == 'br':
                 releases.append(release)
-                release = Release()     # at last iteration release is not used
+                release = Release(self.id)  # at last iteration release is not used
         return releases
 
     @cached_property
@@ -445,7 +465,6 @@ class Series:
 
     @cached_property
     def activity_stats(self):
-        # TODO: parse and return position changes
         a_tags = self.entries['Activity Stats'].find_all('a')
         stats = ActivityStats()
         for a in a_tags:
@@ -504,8 +523,8 @@ def id_from_url(url):
     return int(params['id'][0]) if 'id' in params else None
 
 class ListStats:
-    def __init__(self, series_id, session=None, **kwargs):
-        self.id = series_id
+    def __init__(self, id, session=None, **kwargs):
+        self.id = id
 
         if session is None:
             self.session = requests.Session()
@@ -516,6 +535,14 @@ class ListStats:
         self.wish_total = kwargs.get('wish_total')
         self.unfinished_total = kwargs.get('unfinished_total')
         self.custom_total = kwargs.get('custom_total')
+        self.__kwargs = kwargs
+
+    def __repr__(self):
+        if self.__kwargs:
+            arguments = ', '.join('='.join((k,repr(v))) for k,v in self.__kwargs.items())
+            return f'ListStats(id={self.id}, {arguments})'
+        else:
+            return f'ListStats(id={self.id})'
 
     def populate(self, delay=2, list_names=None):
         # https://www.mangaupdates.com/series.html?act=list&list=read&sid=33
