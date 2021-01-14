@@ -11,8 +11,6 @@ import exceptions
 
 # TODO: convert lists to generators
 # TODO: make private methods as needed
-# TODO: use `recursive=False` on `find`s or `find_all`s if possible
-# TODO: use `href=True` on `find('a')` or `find_all('a')`s
 
 @dataclass
 class Group:
@@ -188,10 +186,10 @@ class Series:
     @cached_property
     def related_series(self):
         series = []
-        a_tags = self.entries['Related Series'].find_all('a')
+        a_tags = self.entries['Related Series'].find_all('a', href=True)
         for a in a_tags:
             title = a.get_text(strip=True)
-            series_id = id_from_url(a.get('href'))
+            series_id = id_from_url(a['href'])
             relation = self.remove_outer_parens(a.next_sibling)
             series.append(RelatedSeries(series=Series(series_id, tentative_title=title),
                                         relation=relation))
@@ -367,32 +365,31 @@ class Series:
 
     @cached_property
     def category_recommendations(self):
-        a_tags = self.entries['Category Recommendations'].find_all('a')
+        a_tags = self.entries['Category Recommendations'].find_all('a', href=True)
         cat_recs = []
         for a in a_tags:
-            series_id = id_from_url(a.get('href'))
+            series_id = id_from_url(a['href'])
             series_name = a.get_text(strip=True)
             cat_recs.append(Series(series_id, tentative_title=series_name))
         return cat_recs
 
     @cached_property
     def recommendations(self):
-        a_tags = self.entries['Recommendations'].find_all('a')
+        a_tags = self.entries['Recommendations'].find_all('a', href=True)
         recs = []
         for a in a_tags:
-            if a.has_attr('href'):
-                series_id = id_from_url(a['href'])
-                if series_id is None:   # to avoid `More...` or `Less...` links
-                    continue
-                series_name = a.get_text(strip=True)
-                series = Series(series_id, tentative_title=series_name)
-                if series not in recs:    # avoid duplicates
-                    recs.append(series)
+            series_id = id_from_url(a['href'])
+            if series_id is None:   # to avoid `More...` or `Less...` links
+                continue
+            series_name = a.get_text(strip=True)
+            series = Series(series_id, tentative_title=series_name)
+            if series not in recs:    # avoid duplicates
+                recs.append(series)
         return recs
 
     @cached_property
     def authors(self):
-        a_tags = self.entries['Author(s)'].find_all('a')
+        a_tags = self.entries['Author(s)'].find_all('a', href=True)
         authors = []
         for a in a_tags:
             authors.append(Author(id=id_from_url(a['href']),
@@ -401,7 +398,7 @@ class Series:
 
     @cached_property
     def artists(self):
-        a_tags = self.entries['Artist(s)'].find_all('a')
+        a_tags = self.entries['Artist(s)'].find_all('a', href=True)
         artists = []
         for a in a_tags:
             artists.append(Author(id=id_from_url(a['href']),
@@ -430,7 +427,7 @@ class Series:
 
     @cached_property
     def serialized_in(self):
-        a_tags = self.entries['Serialized In (magazine)'].find_all('a')
+        a_tags = self.entries['Serialized In (magazine)'].find_all('a', href=True)
         magazines = []
         for a in a_tags:
             magazine = Magazine(url=f"{self.domain}/{a['href']}",
@@ -452,7 +449,7 @@ class Series:
 
     @cached_property
     def english_publisher(self):
-        a_tags = self.entries['English Publisher'].find_all('a')
+        a_tags = self.entries['English Publisher'].find_all('a', href=True)
         publishers = []
         for a in a_tags:
             publisher = Publisher(id=id_from_url(a['href']),
@@ -464,7 +461,7 @@ class Series:
 
     @cached_property
     def activity_stats(self):
-        a_tags = self.entries['Activity Stats'].find_all('a')
+        a_tags = self.entries['Activity Stats'].find_all('a', href=True)
         stats = ActivityStats()
         for a in a_tags:
             interval = a.get_text(strip=True)
@@ -578,7 +575,7 @@ class ListStats:
         prefix = 'javascript:loadUser(' # for extracting the user id
         suffix = f',"{list_name}")'
         entries = []
-        for a in rows.find_all('a', recursive=False):
+        for a in rows.find_all('a', recursive=False, href=True):
             username = a.get_text(strip=True)
             user_id = int(a['href'][len(prefix):-len(suffix)])
             entry = ListEntry(series_id=self.id, user_id=user_id, username=username)
