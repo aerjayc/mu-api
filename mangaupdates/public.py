@@ -281,6 +281,8 @@ class Series:
     @cached_property
     def user_rating(self):
         div = self.entries['User Rating']
+        if div.get_text(strip=True) == 'N/A':
+            return None
 
         string = div.next_element.strip()
         pattern = r'Average: (\d+\.?\d*)'
