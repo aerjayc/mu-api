@@ -9,8 +9,9 @@ from typing import List, Any
 
 
 # TODO: convert lists to generators
-# TODO: convert `x = d[key] if key in d else None` to `x = d.get(key)`
 # TODO: make private methods as needed
+# TODO: use `recursive=False` on `find`s or `find_all`s if possible
+# TODO: allow errors to occur to notice bugs
 
 @dataclass
 class Group:
@@ -359,7 +360,7 @@ class Series:
         a_tags = self.entries['Category Recommendations'].find_all('a')
         cat_recs = []
         for a in a_tags:
-            series_id = id_from_url(a['href']) if a.has_attr('href') else None
+            series_id = id_from_url(a.get('href'))
             series_name = a.get_text(strip=True)
             cat_recs.append(Series(series_id, tentative_title=series_name))
         return cat_recs
@@ -413,7 +414,7 @@ class Series:
         a = self.entries['Original Publisher'].a
         if a:
             publisher = Publisher()
-            publisher.id = id_from_url(a['href']) if a.has_attr('href') else None
+            publisher.id = id_from_url(a.get('href'))
             if a.has_attr('title') and a['title'] == 'Publisher Info':
                 publisher.name = a.get_text(strip=True)
             elif a.get_text(strip=True) == 'Add':
