@@ -154,10 +154,9 @@ class Series:
     @cached_property
     def title(self):
         span = self.main_content.select_one('span.releasestitle.tabletitle')
-        if span:
-            return span.get_text(strip=True)
-        else:
-            return None
+        if span is None:
+            raise exceptions.ParseError('Title')
+        return span.get_text(strip=True)
 
     @cached_property
     def description(self):
@@ -281,6 +280,8 @@ class Series:
 
         # extract forum id
         params = params_from_url(self.entries['Forum'].a['href'])
+        if 'fid' not in params:
+            raise exceptions.ParseError("Forum ('fid')")
         fid = int(params['fid'][0])
 
         return ForumStats(fid, topics, posts)
@@ -331,12 +332,18 @@ class Series:
     @cached_property
     def last_updated(self):
         updated = self.entries['Last Updated'].get_text(strip=True)
-        return None if updated == 'N/A' else updated
+        if updated == 'N/A':
+            return None
+        else:
+            return updated
 
     @cached_property
     def image(self):
         img = self.entries['Image'].img
-        return img['src'] if img and img.has_attr('src') else None
+        if img and img.has_attr('src'):
+            return img['src']
+        else:
+            return None
 
     @cached_property
     def genre(self):
@@ -347,20 +354,19 @@ class Series:
 
     @cached_property
     def categories(self):
-        a_tags = self.entries['Categories'].select('li > a')
+        a_tags = self.entries['Categories'].select('li > a[title]')
         cats = []
         score_pattern = re.compile(r'Score: (\d+) \((\d+),(\d+)\)', re.IGNORECASE)
         for a in a_tags:
-            if a.has_attr('title'):
-                string = a['title']
-                matches = re.search(score_pattern, string)
-                if not matches:
-                    raise exceptions.RegexParseError(pattern=score_pattern.pattern, string=string)
-                score = int(matches.group(1))
-                agree = int(matches.group(2))
-                disagree = int(matches.group(3))
-                name = a.get_text(strip=True)
-                cats.append(Category(name, score, agree, disagree))
+            string = a['title']
+            matches = re.search(score_pattern, string)
+            if not matches:
+                raise exceptions.RegexParseError(pattern=score_pattern.pattern, string=string)
+            score = int(matches.group(1))
+            agree = int(matches.group(2))
+            disagree = int(matches.group(3))
+            name = a.get_text(strip=True)
+            cats.append(Category(name, score, agree, disagree))
         return cats
 
     @cached_property
@@ -408,7 +414,10 @@ class Series:
     @cached_property
     def year(self):
         yr = self.entries['Year'].get_text(strip=True)
-        return None if yr == 'N/A' else int(yr)
+        if yr == 'N/A':
+            return None
+        else:
+            return int(yr)
 
     @cached_property
     def original_publisher(self):
@@ -519,7 +528,10 @@ def params_from_url(url):
 
 def id_from_url(url):
     params = params_from_url(url)
-    return int(params['id'][0]) if 'id' in params else None
+    if 'id' in params:
+        return int(params['id'][0])
+    else:
+        return None
 
 class ListStats:
     def __init__(self, id, session=None, **kwargs):
