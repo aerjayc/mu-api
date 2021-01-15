@@ -5,7 +5,7 @@ from functools import cached_property
 import time
 from dataclasses import dataclass, field
 from typing import List, Any
-import exceptions
+from mangaupdates import exceptions
 
 
 # TODO: make private methods as needed
