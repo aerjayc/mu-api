@@ -8,8 +8,6 @@ from typing import List, Any
 from mangaupdates import exceptions
 
 
-# TODO: make private methods as needed
-
 @dataclass
 class Group:
     name: str
@@ -114,26 +112,26 @@ class Series:
         self.id = id
 
         if session is None:
-            self.session = requests.Session()
+            self._session = requests.Session()
         else:
-            self.session = session
+            self._session = session
 
         if tentative_title is not None:
             self.title = tentative_title
-            self.__uses_tentative_title = True
+            self._uses_tentative_title = True
         else:
-            self.__uses_tentative_title = False
+            self._uses_tentative_title = False
 
     def __repr__(self):
-        if self.__uses_tentative_title:
+        if self._uses_tentative_title:
             return f'Series(id={self.id}, tentative_title={repr(self.title)})'
         else:
             return f'Series(id={self.id})'
 
     def populate(self):
-        self.response = self.session.get(f'{self.domain}/series.html', params={'id': self.id})
-        self.response.raise_for_status()
-        self.main_content = BeautifulSoup(self.response.content, 'lxml').find(id='main_content')
+        self._response = self._session.get(f'{self.domain}/series.html', params={'id': self.id})
+        self._response.raise_for_status()
+        self._main_content = BeautifulSoup(self._response.content, 'lxml').find(id='main_content')
 
         # delete cache
         cached = ('activity_stats', 'anime_chapters', 'associated_names',
@@ -152,14 +150,14 @@ class Series:
 
     @cached_property
     def title(self):
-        span = self.main_content.select_one('span.releasestitle.tabletitle')
+        span = self._main_content.find('span', class_='releasestitle tabletitle')
         if span is None:
             raise exceptions.ParseError('Title')
         return span.get_text(strip=True)
 
     @cached_property
     def description(self):
-        description_ = self.main_content.find(id='div_desc_link') or self.entries['Description']
+        description_ = self._main_content.find(id='div_desc_link') or self._entries['Description']
         string = description_.get_text(strip=True)
         if string == 'N/A':
             return None
@@ -167,8 +165,8 @@ class Series:
             return string
 
     @cached_property
-    def entries(self):
-        sCats = self.main_content.find_all('div', class_='sCat')
+    def _entries(self):
+        sCats = self._main_content.find_all('div', class_='sCat')
         entries = {}
         for sCat in sCats:
             if sCat.b:
@@ -179,11 +177,11 @@ class Series:
 
     @cached_property
     def series_type(self):
-        return self.entries['Type'].get_text(strip=True)
+        return self._entries['Type'].get_text(strip=True)
 
     @property
     def related_series(self):
-        a_tags = self.entries['Related Series'].find_all('a', href=True)
+        a_tags = self._entries['Related Series'].find_all('a', href=True)
         for a in a_tags:
             title = a.get_text(strip=True)
             series_id = id_from_url(a['href'])
@@ -193,11 +191,11 @@ class Series:
 
     @cached_property
     def associated_names(self):
-        return (name for name in self.entries['Associated Names'].stripped_strings)
+        return (name for name in self._entries['Associated Names'].stripped_strings)
 
     @property
     def groups_scanlating(self):
-        a_tags = self.entries['Groups Scanlating'].find_all('a', href=True)
+        a_tags = self._entries['Groups Scanlating'].find_all('a', href=True)
         for a in a_tags:
             if a['href'].startswith('javascript'):  # skip 'More...' and 'Less...'
                 continue
@@ -208,7 +206,7 @@ class Series:
 
     @property
     def latest_releases(self):
-        elements = list(self.entries['Latest Release(s)'].children)
+        elements = list(self._entries['Latest Release(s)'].children)
         release = Release(self.id)
         for element_index in range(len(elements)):
             element = elements[element_index]
@@ -229,11 +227,11 @@ class Series:
 
     @cached_property
     def status(self):
-        return self.entries['Status'].get_text(strip=True)
+        return self._entries['Status'].get_text(strip=True)
 
     @cached_property
     def completely_scanlated(self):
-        val = self.entries['Completely Scanlated?'].get_text(strip=True)
+        val = self._entries['Completely Scanlated?'].get_text(strip=True)
         if val == 'Yes':
             return True
         elif val == 'No':
@@ -243,7 +241,7 @@ class Series:
 
     @cached_property
     def anime_chapters(self):
-        strings = list(self.entries['Anime Start/End Chapter'].stripped_strings)
+        strings = list(self._entries['Anime Start/End Chapter'].stripped_strings)
         if len(strings) == 1 and strings[0] == 'N/A':
             return None
         else:
@@ -251,7 +249,7 @@ class Series:
 
     @property
     def user_reviews(self):
-        a_tags = self.entries['User Reviews'].find_all('a', href=True)
+        a_tags = self._entries['User Reviews'].find_all('a', href=True)
         for a in a_tags:
             review_id = id_from_url(a['href'])
             review_name = a.get_text(strip=True)
@@ -260,7 +258,7 @@ class Series:
 
     @cached_property
     def forum(self):
-        string = next(self.entries['Forum'].stripped_strings)
+        string = next(self._entries['Forum'].stripped_strings)
 
         pattern = r'(\d+) topics, (\d+) posts'
         matches = re.search(pattern, string, re.IGNORECASE)
@@ -270,7 +268,7 @@ class Series:
         posts = int(matches.group(2))
 
         # extract forum id
-        params = params_from_url(self.entries['Forum'].a['href'])
+        params = params_from_url(self._entries['Forum'].a['href'])
         if 'fid' not in params:
             raise exceptions.ParseError("Forum ('fid')")
         fid = int(params['fid'][0])
@@ -279,7 +277,7 @@ class Series:
 
     @cached_property
     def user_rating(self):
-        div = self.entries['User Rating']
+        div = self._entries['User Rating']
         if div.get_text(strip=True) == 'N/A':
             return None
 
@@ -324,7 +322,7 @@ class Series:
 
     @cached_property
     def last_updated(self):
-        updated = self.entries['Last Updated'].get_text(strip=True)
+        updated = self._entries['Last Updated'].get_text(strip=True)
         if updated == 'N/A':
             return None
         else:
@@ -332,7 +330,7 @@ class Series:
 
     @cached_property
     def image(self):
-        img = self.entries['Image'].img
+        img = self._entries['Image'].img
         if img and img.has_attr('src'):
             return img['src']
         else:
@@ -340,13 +338,13 @@ class Series:
 
     @property
     def genre(self):
-        for u in self.entries['Genre'].select('a > u'):
+        for u in self._entries['Genre'].select('a > u'):
             yield u.get_text(strip=True)
 
     @property
     def categories(self):
         score_pattern = re.compile(r'Score: (\d+) \((\d+),(\d+)\)', re.IGNORECASE)
-        for a in self.entries['Categories'].select('li > a[title]'):
+        for a in self._entries['Categories'].select('li > a[title]'):
             string = a['title']
             matches = re.search(score_pattern, string)
             if not matches:
@@ -361,7 +359,7 @@ class Series:
 
     @property
     def category_recommendations(self):
-        for a in self.entries['Category Recommendations'].find_all('a', href=True):
+        for a in self._entries['Category Recommendations'].find_all('a', href=True):
             series_id = id_from_url(a['href'])
             series_name = a.get_text(strip=True)
             yield Series(series_id, tentative_title=series_name)
@@ -369,7 +367,7 @@ class Series:
     @property
     def recommendations(self):
         start_of_complete_list = False
-        for a in self.entries['Recommendations'].find_all('a', href=True):
+        for a in self._entries['Recommendations'].find_all('a', href=True):
             if a['href'].startswith('javascript'):  # skips everything before 'More...'
                 if a.get_text(strip=True) == 'More...':
                     start_of_complete_list = True
@@ -386,19 +384,19 @@ class Series:
 
     @property
     def authors(self):
-        for a in self.entries['Author(s)'].find_all('a', href=True):
+        for a in self._entries['Author(s)'].find_all('a', href=True):
             yield Author(id=id_from_url(a['href']),
                          name=a.get_text(strip=True))
 
     @property
     def artists(self):
-        for a in self.entries['Artist(s)'].find_all('a', href=True):
+        for a in self._entries['Artist(s)'].find_all('a', href=True):
             yield Author(id=id_from_url(a['href']),
                          name=a.get_text(strip=True))
 
     @cached_property
     def year(self):
-        yr = self.entries['Year'].get_text(strip=True)
+        yr = self._entries['Year'].get_text(strip=True)
         if yr == 'N/A':
             return None
         else:
@@ -406,7 +404,7 @@ class Series:
 
     @cached_property
     def original_publisher(self):
-        a = self.entries['Original Publisher'].a
+        a = self._entries['Original Publisher'].a
         if a:
             publisher_id = id_from_url(a.get('href'))
             if a.has_attr('title') and a['title'] == 'Publisher Info':
@@ -421,7 +419,7 @@ class Series:
 
     @property
     def serialized_in(self):
-        for a in self.entries['Serialized In (magazine)'].find_all('a', href=True):
+        for a in self._entries['Serialized In (magazine)'].find_all('a', href=True):
             magazine = Magazine(url=f"{self.domain}/{a['href']}",
                                 name=a.get_text(strip=True))
             if a.next_sibling and a.next_sibling.name is None:
@@ -430,7 +428,7 @@ class Series:
 
     @cached_property
     def licensed_in_english(self):
-        val = self.entries['Licensed (in English)'].get_text(strip=True)
+        val = self._entries['Licensed (in English)'].get_text(strip=True)
         if val == 'Yes':
             return True
         elif val == 'No':
@@ -440,7 +438,7 @@ class Series:
 
     @property
     def english_publisher(self):
-        for a in self.entries['English Publisher'].find_all('a', href=True):
+        for a in self._entries['English Publisher'].find_all('a', href=True):
             publisher = Publisher(id=id_from_url(a['href']),
                                   name=a.get_text(strip=True))
             if a.next_sibling and a.next_sibling.name is None:
@@ -449,7 +447,7 @@ class Series:
 
     @cached_property
     def activity_stats(self):
-        a_tags = self.entries['Activity Stats'].find_all('a', href=True)
+        a_tags = self._entries['Activity Stats'].find_all('a', href=True)
         stats = ActivityStats()
         for a in a_tags:
             interval = a.get_text(strip=True)
@@ -478,7 +476,7 @@ class Series:
     @cached_property
     def list_stats(self):
         stats = {}
-        for b in self.entries['List Stats'].find_all('b'):
+        for b in self._entries['List Stats'].find_all('b'):
             num_users = int(b.get_text(strip=True))
             if b.next_sibling and b.next_sibling.name is None:
                 list_name = b.next_sibling.strip()
@@ -516,19 +514,19 @@ class ListStats:
         self.id = id
 
         if session is None:
-            self.session = requests.Session()
+            self._session = requests.Session()
         else:
-            self.session = session
+            self._session = session
 
         self.reading_total = kwargs.get('reading_total')
         self.wish_total = kwargs.get('wish_total')
         self.unfinished_total = kwargs.get('unfinished_total')
         self.custom_total = kwargs.get('custom_total')
-        self.__kwargs = kwargs
+        self._kwarg = kwargs
 
     def __repr__(self):
-        if self.__kwargs:
-            arguments = ', '.join('='.join((k,repr(v))) for k,v in self.__kwargs.items())
+        if self._kwarg:
+            arguments = ', '.join('='.join((k,repr(v))) for k,v in self._kwarg.items())
             return f'ListStats(id={self.id}, {arguments})'
         else:
             return f'ListStats(id={self.id})'
@@ -542,17 +540,17 @@ class ListStats:
         params = {'act': 'list',
                   'sid': self.id}
 
-        self.soups = {}
+        self._soups = {}
         for list_name in list_names:
             params['list'] = list_name
-            response = self.session.get(url, params=params)
+            response = self._session.get(url, params=params)
             response.raise_for_status()
             time.sleep(delay)
 
-            self.soups[list_name] = BeautifulSoup(response.content, 'lxml')
+            self._soups[list_name] = BeautifulSoup(response.content, 'lxml')
 
     def general_list(self, list_name):
-        rows = self.soups[list_name].p.find_next_sibling('p')
+        rows = self._soups[list_name].p.find_next_sibling('p')
         if not rows:
             return None
 
