@@ -130,9 +130,14 @@ class Series:
             return f'Series(id={self.id})'
 
     def populate(self):
+        """Re/loads the series webpage. Needs to be called to access the class
+        properties.
+        """
+
         self._response = self._session.get(f'{self.domain}/series.html', params={'id': self.id})
         self._response.raise_for_status()
         self._main_content = BeautifulSoup(self._response.content, 'lxml').find(id='main_content')
+        _ = self._entries
 
         # delete cache
         cached = ('activity_stats', 'anime_chapters', 'associated_names',
@@ -151,14 +156,42 @@ class Series:
 
     @cached_property
     def title(self):
-        span = self._main_content.find('span', class_='releasestitle tabletitle')
+        """The title of the series.
+
+        Returns:
+            - str: Title
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+            - exceptions.ParseError: If HTML content is unexpected
+        """
+
+        try:
+            span = self._main_content.find('span', class_='releasestitle tabletitle')
+        except AttributeError:
+            raise exceptions.UnpopulatedError
+
         if span is None:
             raise exceptions.ParseError('Title')
         return span.get_text(strip=True)
 
     @cached_property
     def description(self):
-        description_ = self._main_content.find(id='div_desc_link') or self._entries['Description']
+        """The description of the series.
+
+        Returns either:
+            - str: Description
+                 (Note: not fully working, as it requires javascript to get the
+                 entire description)
+            - None: If series has no description
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        try:
+            description_ = self._main_content.find(id='div_desc_link') or self._entries['Description']
+        except AttributeError:
+            raise exceptions.UnpopulatedError
+
         string = description_.get_text(strip=True)
         if string == 'N/A':
             return None
@@ -167,7 +200,22 @@ class Series:
 
     @cached_property
     def _entries(self):
-        sCats = self._main_content.find_all('div', class_='sCat')
+        """Snippets of HTML to be parsed by the property methods.
+
+        Returns:
+            - dict[key] = bs4.element.Tag:
+                A dict of html tags from which the properties will be parsed.
+                The keys are the bold text inside the HTML elements with
+                `class="sCat"`
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        try:
+            sCats = self._main_content.find_all('div', class_='sCat')
+        except AttributeError:
+            raise exceptions.UnpopulatedError
+
         entries = {}
         for sCat in sCats:
             if sCat.b:
@@ -178,10 +226,37 @@ class Series:
 
     @cached_property
     def series_type(self):
+        """Type of series (Manga, Manhwa, etc.)
+
+        Returns:
+            - str: Type of series
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         return self._entries['Type'].get_text(strip=True)
 
     @property
     def related_series(self):
+        """Series related to this series (Spin-offs, etc.)
+
+        Yields:
+            - public.RelatedSeries:
+                Series related to this series. Contains a `public.Series` object
+                and its relation (str).
+                Can be accessed by:
+                    public.RelatedSeries.series     # public.Series object
+                    public.RelatedSeries.relation   # str
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         a_tags = self._entries['Related Series'].find_all('a', href=True)
         for a in a_tags:
             title = a.get_text(strip=True)
@@ -192,10 +267,35 @@ class Series:
 
     @cached_property
     def associated_names(self):
+        """Other/associated names of the series
+
+        Yields:
+            - str: Name associated to the series
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         return (name for name in self._entries['Associated Names'].stripped_strings)
 
     @property
     def groups_scanlating(self):
+        """Other/associated names of the series
+
+        Yields:
+            - public.Group:
+                Group that has scanlated the series.
+                    public.Group.name               # str
+                    public.Group.id                 # int
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         a_tags = self._entries['Groups Scanlating'].find_all('a', href=True)
         for a in a_tags:
             if a['href'].startswith('javascript'):  # skip 'More...' and 'Less...'
@@ -207,6 +307,25 @@ class Series:
 
     @property
     def latest_releases(self):
+        """Latest releases of the series
+
+        Yields:
+            - public.Release
+                public.Release.series_id            # int/None
+                public.Release.volume               # str/None
+                public.Release.chapter              # str/None
+                public.Release.groups               # list[public.Group]
+                    public.Release.groups.name      # str
+                    public.Release.groups.id        # int
+                public.Release.elapsed              # str
+
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         elements = list(self._entries['Latest Release(s)'].children)
         release = Release(self.id)
         for element_index in range(len(elements)):
@@ -228,10 +347,33 @@ class Series:
 
     @cached_property
     def status(self):
+        """Status of the series
+
+        Returns:
+            - str: Status ('Complete', 'Ongoing', etc).
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         return self._entries['Status'].get_text(strip=True)
 
     @cached_property
     def completely_scanlated(self):
+        """Completely scanlated?
+
+        Returns either:
+            - bool
+            - None: If the parsed string is neither 'Yes' nor 'No'
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         val = self._entries['Completely Scanlated?'].get_text(strip=True)
         if val == 'Yes':
             return True
@@ -242,6 +384,18 @@ class Series:
 
     @cached_property
     def anime_chapters(self):
+        """Chapters of the series that were adapted into anime (if adapted)
+
+        Returns either:
+            - list[str]
+            - None: If series has not been adapted to anime
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         strings = list(self._entries['Anime Start/End Chapter'].stripped_strings)
         if len(strings) == 1 and strings[0] == 'N/A':
             return None
@@ -250,6 +404,20 @@ class Series:
 
     @property
     def user_reviews(self):
+        """User Reviews of the series
+
+        Yields:
+            - public.UserReview
+                public.UserReview.id                    # int
+                public.UserReview.reviewer              # str
+                public.UserReview.name                  # str
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         a_tags = self._entries['User Reviews'].find_all('a', href=True)
         for a in a_tags:
             review_id = id_from_url(a['href'])
@@ -259,6 +427,22 @@ class Series:
 
     @cached_property
     def forum(self):
+        """User Reviews of the series
+
+        Returns:
+            - public.ForumStats
+                public.ForumStats.id                # int
+                public.ForumStats.topics            # int
+                public.ForumStats.posts             # int
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+            - exceptions.RegexParseError: If HTML content is unexpected
+            - exceptions.ParseError: If HTML content is unexpected
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         string = next(self._entries['Forum'].stripped_strings)
 
         pattern = r'(\d+) topics, (\d+) posts'
@@ -278,6 +462,24 @@ class Series:
 
     @cached_property
     def user_rating(self):
+        """User Rating of the series
+
+        Returns either:
+            - public.UserRating
+                public.UserRating.average                   # int
+                public.UserRating.bayesian_average          # int
+                public.UserRating.votes                     # int
+                public.UserRating.distribution              # dict
+            - None: If no user ratings
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+            - exceptions.RegexParseError: If HTML content is unexpected
+            - exceptions.ParseError: If HTML content is unexpected
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         div = self._entries['User Rating']
         if div.get_text(strip=True) == 'N/A':
             return None
@@ -323,6 +525,18 @@ class Series:
 
     @cached_property
     def last_updated(self):
+        """Timestamp when the series was last updated
+
+        Returns either:
+            - str: <Month> <Date>th <Year>, <Hour>:<Minute><am/pm> <timezone>
+            - None: If no releases
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         updated = self._entries['Last Updated'].get_text(strip=True)
         if updated == 'N/A':
             return None
@@ -331,6 +545,18 @@ class Series:
 
     @cached_property
     def image(self):
+        """Series Image URL
+
+        Returns either:
+            - str: URL of series image
+            - None: If no image
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         img = self._entries['Image'].img
         if img and img.has_attr('src'):
             return img['src']
@@ -339,11 +565,38 @@ class Series:
 
     @property
     def genres(self):
+        """Genres of the series
+
+        Yields:
+            - str: genre
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         for u in self._entries['Genre'].select('a > u'):
             yield u.get_text(strip=True)
 
     @property
     def categories(self):
+        """Categories of the series
+
+        Yields:
+            - public.Category
+                public.Category.name                    # str
+                public.Category.score                   # int
+                public.Category.agree                   # int
+                public.Category.disagree                # int
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+            - exceptions.RegexParseError: If HTML content is unexpected
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         score_pattern = re.compile(r'Score: (\d+) \((\d+),(\d+)\)', re.IGNORECASE)
         for a in self._entries['Categories'].select('li > a[title]'):
             string = a['title']
@@ -360,6 +613,19 @@ class Series:
 
     @property
     def category_recommendations(self):
+        """Series recommendations (based on category)
+
+        Yields:
+            - public.Series
+                public.Series.id                        # int
+                public.Series.title                     # str
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         for a in self._entries['Category Recommendations'].find_all('a', href=True):
             series_id = id_from_url(a['href'])
             series_name = a.get_text(strip=True)
@@ -367,6 +633,19 @@ class Series:
 
     @property
     def recommendations(self):
+        """Series recommendations
+
+        Yields:
+            - public.Series
+                public.Series.id                        # int
+                public.Series.title                     # str
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         start_of_complete_list = False
         for a in self._entries['Recommendations'].find_all('a', href=True):
             if a['href'].startswith('javascript'):  # skips everything before 'More...'
@@ -385,18 +664,56 @@ class Series:
 
     @property
     def authors(self):
+        """Authors of the series
+
+        Yields:
+            - public.Author
+                public.Author.name                          # str
+                public.Author.id                            # int
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         for a in self._entries['Author(s)'].find_all('a', href=True):
             yield Author(id=id_from_url(a['href']),
                          name=a.get_text(strip=True))
 
     @property
     def artists(self):
+        """Artists of the series
+
+        Yields:
+            - public.Author
+                public.Author.name                          # str
+                public.Author.id                            # int
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         for a in self._entries['Artist(s)'].find_all('a', href=True):
             yield Author(id=id_from_url(a['href']),
                          name=a.get_text(strip=True))
 
     @cached_property
     def year(self):
+        """Year the series was first released
+
+        Returns either:
+            - int: Year
+            - None: If no year listed
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         yr = self._entries['Year'].get_text(strip=True)
         if yr == 'N/A':
             return None
@@ -405,6 +722,20 @@ class Series:
 
     @cached_property
     def original_publisher(self):
+        """Original publisher of the series
+
+        Returns either:
+            - public.Publisher
+                public.Publisher.id
+                public.Publisher.name
+            - None: If no publisher listed
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         a = self._entries['Original Publisher'].a
         if a:
             publisher_id = id_from_url(a.get('href'))
@@ -414,12 +745,26 @@ class Series:
                 publisher_name = a.parent.get_text(strip=True)[:-len('\xa0[Add]')]
             else:
                 raise exceptions.ParseError('Original Publisher (Name)')
-            return Publisher(publisher_id, publisher_name)
+            return Publisher(publisher_name, publisher_id)
         else:
             return None
 
     @property
     def serialized_in(self):
+        """Magazines in which the series was serialized
+
+        Yields:
+            - public.Magazine
+                public.Magazine.name                            # str
+                public.Magazine.url                             # str
+                public.Magazine.parent                          # str
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         for a in self._entries['Serialized In (magazine)'].find_all('a', href=True):
             magazine = Magazine(url=f"{self.domain}/{a['href']}",
                                 name=a.get_text(strip=True))
@@ -429,6 +774,18 @@ class Series:
 
     @cached_property
     def licensed_in_english(self):
+        """Licensed in English?
+
+        Returns either:
+            - bool
+            - None: If the parsed string is neither 'Yes' nor 'No'
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         val = self._entries['Licensed (in English)'].get_text(strip=True)
         if val == 'Yes':
             return True
@@ -439,6 +796,20 @@ class Series:
 
     @property
     def english_publisher(self):
+        """English Publisher
+
+        Yields:
+            - public.Publisher
+                public.Publisher.name                           # str
+                public.Publisher.id                             # int
+                public.Publisher.note                           # str
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         for a in self._entries['English Publisher'].find_all('a', href=True):
             publisher = Publisher(id=id_from_url(a['href']),
                                   name=a.get_text(strip=True))
@@ -448,6 +819,24 @@ class Series:
 
     @cached_property
     def activity_stats(self):
+        """Activity Stats
+
+        Returns:
+            - public.ActivityStats
+                public.ActivityStats.weekly                     # Rank
+                public.ActivityStats.monthly                    # Rank
+                public.ActivityStats.quarterly                  # Rank
+                public.ActivityStats.semiannual                 # Rank
+                public.ActivityStats.yearly                     # Rank
+                    # public.Rank.position              # int
+                    # public.Rank.change                # int
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         a_tags = self._entries['Activity Stats'].find_all('a', href=True)
         stats = ActivityStats()
         for a in a_tags:
@@ -476,6 +865,22 @@ class Series:
 
     @cached_property
     def list_stats(self):
+        """Series list statistics
+
+        Returns:
+            - public.ListStats
+                public.ListStats.id                             # int
+                public.ListStats.reading_total                  # int
+                public.ListStats.wish_total                     # int
+                public.ListStats.unfinished_total               # int
+                public.ListStats.custom_total                   # int
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+        """
+
+        if '_entries' not in self.__dict__:
+            raise exceptions.UnpopulatedError
+
         stats = {}
         for b in self._entries['List Stats'].find_all('b'):
             num_users = int(b.get_text(strip=True))
@@ -488,6 +893,16 @@ class Series:
         return ListStats(self.id, **stats)
 
     def json(self):
+        """Export Series object as json
+
+        Returns:
+            - str
+        Raises:
+            - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
+            - exceptions.RegexParseError: If HTML content is unexpected
+            - exceptions.ParseError: If HTML content is unexpected
+        """
+
         data = {'id': self.id,
                 'title': self.title,
                 'description': self.description,

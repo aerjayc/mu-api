@@ -12,3 +12,9 @@ class RegexParseError(ParseError):
         else:
             message = 'Regular Expression yielded no results'
         super().__init__(message)
+
+class UnpopulatedError(Exception):
+    """Webpage hasn't been downloaded yet"""
+
+    def __init__(self):
+        super().__init__("Webpage hasn't been loaded yet. Call `.populate()` first.")
