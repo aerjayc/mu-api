@@ -908,114 +908,61 @@ class Series:
                 'description': self.description,
                 'series_type': self.series_type,
                 'associated_names': list(self.associated_names),
+                'groups_scanlating': [group.__dict__ for group in self.groups_scanlating],
                 'status': self.status,
                 'completely_scanlated': self.completely_scanlated,
                 'anime_chapters': self.anime_chapters,
+                'user_reviews': [review.__dict__ for review in self.user_reviews],
+                'forum': self.forum.__dict__,
+                'user_rating': self.user_rating.__dict__ if self.user_rating else None,
                 'last_updated': self.last_updated,
                 'image': self.image,
                 'genres': list(self.genres),
+                'categories': [category.__dict__ for category in self.categories],
+                'authors': [author.__dict__ for author in self.authors],
+                'artists': [artist.__dict__ for artist in self.authors],
                 'year': self.year,
-                'licensed_in_english': self.licensed_in_english
+                'original_publisher': self.original_publisher.__dict__ if self.original_publisher else None,
+                'serialized_in': [magazine.__dict__ for magazine in self.serialized_in],
+                'licensed_in_english': self.licensed_in_english,
+                'english_publisher': [publisher.__dict__ for publisher in self.english_publisher],
                }
 
-        data['forum'] = {'id': self.forum.id,
-                         'topics': self.forum.topics,
-                         'posts': self.forum.posts
-                        }
+        data['related_series'] = []
+        for i, series in enumerate(self.related_series):
+            data['related_series'].append({'id': series.series.id,
+                                           'title': series.series.title,
+                                           'relation': series.relation})
 
-        data['user_rating'] = {'average': self.user_rating.average,
-                               'bayesian_average': self.user_rating.bayesian_average,
-                               'votes': self.user_rating.votes,
-                               'distribution': self.user_rating.distribution
-                              } if self.user_rating else None
-
-        data['related_series'] = {}
-        for series in self.related_series:
-            data['related_series']['id'] = series.series.id
-            data['related_series']['title'] = series.series.title
-            data['related_series']['relation'] = series.relation
-
-        data['groups_scanlating'] = {}
-        for group in self.groups_scanlating:
-            data['groups_scanlating']['id'] = group.id
-            data['groups_scanlating']['name'] = group.name
-
-        data['latest_releases'] = {}
-        for release in self.latest_releases:
-            data['latest_releases']['id'] = release.series_id
-            data['latest_releases']['volume'] = release.volume
-            data['latest_releases']['chapter'] = release.chapter
-            for group in release.groups:
-                data['latest_releases']['id'] = group.id
-                data['latest_releases']['groups'] = group.name
-
-        data['user_reviews'] = {}
-        for review in self.user_reviews:
-            data['user_reviews']['id'] = review.id
-            data['user_reviews']['reviewer'] = review.reviewer
-            data['user_reviews']['name'] = review.name
-
-        data['categories'] = {}
-        for category in self.categories:
-            data['categories']['name'] = category.name
-            data['categories']['score'] = category.score
-            data['categories']['agree'] = category.agree
-            data['categories']['disagree'] = category.disagree
-
-        data['category_recommendations'] = {}
+        data['category_recommendations'] = []
         for series in self.category_recommendations:
-            data['category_recommendations']['id'] = series.id
-            data['category_recommendations']['title'] = series.title
+            data['category_recommendations'].append({'id': series.id,
+                                                     'title': series.title})
 
-        data['recommendations'] = {}
+        data['recommendations'] = []
         for series in self.recommendations:
-            data['recommendations']['id'] = series.id
-            data['recommendations']['title'] = series.title
+            data['recommendations'].append({'id': series.id,
+                                            'title': series.title})
 
-        data['authors'] = {}
-        for author in self.authors:
-            data['authors']['id'] = author.id
-            data['authors']['name'] = author.name
+        data['latest_releases'] = []
+        for release in self.latest_releases:
+            data['latest_releases'].append({'id': release.series_id,
+                                            'volume': release.volume,
+                                            'chapter': release.chapter,
+                                            'groups': [group.__dict__ for group in release.groups]})
 
-        data['artists'] = {}
-        for author in self.authors:
-            data['artists']['id'] = author.id
-            data['artists']['name'] = author.name
-
-        data['original_publisher'] = {'id': self.original_publisher.id,
-                                      'name': self.original_publisher.name,
-                                      'note': self.original_publisher.note
-                                     } if self.original_publisher else None
-
-        data['serialized_in'] = {}
-        for magazine in self.serialized_in:
-            data['serialized_in']['name'] = magazine.name
-            data['serialized_in']['url'] = magazine.url
-            data['serialized_in']['parent'] = magazine.parent
-
-        data['english_publisher'] = {}
-        for publisher in self.english_publisher:
-            data['english_publisher']['name'] = publisher.name
-            data['english_publisher']['id'] = publisher.id
-            data['english_publisher']['note'] = publisher.note
-
-        data['activity_stats'] = {'weekly': {'position': self.activity_stats.weekly.position,
-                                             'change': self.activity_stats.weekly.change},
-                                  'monthly': {'position': self.activity_stats.monthly.position,
-                                              'change': self.activity_stats.monthly.change},
-                                  'quarterly': {'position': self.activity_stats.quarterly.position,
-                                                'change': self.activity_stats.quarterly.change},
-                                  'semiannual': {'position': self.activity_stats.semiannual.position,
-                                                 'change': self.activity_stats.monthly.change},
-                                  'yearly': {'position': self.activity_stats.yearly.position,
-                                             'change': self.activity_stats.yearly.change}
+        data['activity_stats'] = {'weekly': self.activity_stats.weekly.__dict__,
+                                  'monthly': self.activity_stats.monthly.__dict__,
+                                  'quarterly': self.activity_stats.quarterly.__dict__,
+                                  'semiannual': self.activity_stats.semiannual.__dict__,
+                                  'yearly': self.activity_stats.yearly.__dict__
                                  }
 
         data['list_stats'] = {'id': self.list_stats.id,
                               'reading_total': self.list_stats.reading_total,
                               'wish_total': self.list_stats.wish_total,
                               'unfinished_total': self.list_stats.unfinished_total,
-                              'custom_total': self.list_stats.custom_total
+                              'custom_total': self.list_stats.custom_total,
                              }
 
         return json.dumps(data)
