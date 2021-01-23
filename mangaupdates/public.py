@@ -109,7 +109,23 @@ class ListEntry:
 
 class Series:
     domain = 'https://www.mangaupdates.com'
+
     def __init__(self, id, session=None, tentative_title=None):
+        """Initializes Series object
+
+        Arguments:
+            - id (int): Series id
+            - session (requests.Session):
+                Optional. Session to be used by the Series instance.
+                Defaults to None. If None, a new requests.Session object is used.
+            - tentative_title (str):
+                Optional. Title assigned to the series. Defaults to None.
+                Will be overriden by new information provided by the `populate()`
+                method.
+        Returns
+            public.Series
+        """
+
         self.id = id
 
         if session is None:
@@ -992,6 +1008,20 @@ def id_from_url(url):
 
 class ListStats:
     def __init__(self, id, session=None, **kwargs):
+        """Initializes ListStats object
+
+        Arguments:
+            - id (int): Series id
+            - session (requests.Session):
+                Optional. Session to be used by the Series instance.
+                Defaults to None. If None, a new requests.Session object is used.
+            - reading_total/wish_total/unfinished_total/custom_total (int):
+                Optional. Number of users who added the series on the
+                corresponding list. Used by Series object.
+        Returns
+            public.ListStats
+        """
+
         self.id = id
 
         if session is None:
@@ -1013,6 +1043,9 @@ class ListStats:
             return f'ListStats(id={self.id})'
 
     def populate(self, delay=2, list_names=None):
+        """Re/loads the various List webpages for the series.
+        """
+
         # https://www.mangaupdates.com/series.html?act=list&list=read&sid=33
         if list_names is None:
             list_names = ('read', 'wish', 'unfinished')
@@ -1031,6 +1064,17 @@ class ListStats:
             self._soups[list_name] = BeautifulSoup(response.content, 'lxml')
 
     def general_list(self, list_name):
+        """Users who have added the series to their list specified by `list_name`
+
+        Yields:
+            - public.ListEntry
+                public.ListEntry.series_id                      # int
+                public.ListEntry.user_id                        # int
+                public.ListEntry.username                       # str
+                public.ListEntry.rating                         # float
+            - None: If there are no entries
+        """
+
         rows = self._soups[list_name].p.find_next_sibling('p')
         if not rows:
             return None
@@ -1049,17 +1093,44 @@ class ListStats:
 
     @property
     def read(self):
+        """Users who have added the series to their reading list
+
+        Yields either:
+            - public.ListEntry
+            - None: If there are no entries
+        """
+
         return self.general_list('read')
 
     @property
     def wish(self):
+        """Users who have added the series to their wish list
+
+        Yields either:
+            - public.ListEntry
+            - None: If there are no entries
+        """
+
         return self.general_list('wish')
 
     @property
     def unfinished(self):
+        """Users who have added the series to their unfinished list
+
+        Yields either:
+            - public.ListEntry
+            - None: If there are no entries
+        """
+
         return self.general_list('unfinished')
 
     def json(self):
+        """Export ListStats object as json
+
+        Returns:
+            - str
+        """
+
         data = {}
         for key in ('read', 'wish', 'unfinished'):
             data[key] = []
