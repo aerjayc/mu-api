@@ -22,26 +22,3 @@ If you want to get info on One Piece (`id = 33`)
 >>> manga.groups_scanlating
 [(5816, '/a/nonymous'), (2931, 'A-Team'), (2595, 'Akatsuki'), ...
 ```
-
-# TODO
-
-## API
-
-- [ ] Get top-N most recent releases
-- [ ] Search
-  - [ ] Basic Search
-  - [ ] Advanced Search
-- [ ] Export aggregated stuff to `.csv` files
-  - [x] for top-N listers
-  - [ ] for most recent releases
-- [ ] Export to `.csv` during iteration (to avoid losses)
-  - [x] for top-N listers
-  - [ ] for most recent releases
-- [ ] Graceful handling of `Ctrl-C` by iterating functions (e.g. by returning a partial list instead of `None`)
-  - [ ] for top-N listers
-  - [ ] for most recent releases
-
-## Scripts
-
-- [ ] Make dataset out of the read/wish/unfinished lists of the top-N series
-- [ ] Ability to resume to current progress if errored on previous run
