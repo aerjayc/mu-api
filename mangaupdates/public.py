@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import List, Any
 from mangaupdates import exceptions
 import json
+import dateutil.parser
 
 
 @dataclass
@@ -557,7 +558,7 @@ class Series:
         if updated == 'N/A':
             return None
         else:
-            return updated
+            return dateutil.parser.parse(updated)
 
     @cached_property
     def image(self):
