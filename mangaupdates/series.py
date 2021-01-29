@@ -885,7 +885,7 @@ class Series:
                 'user_reviews': [review.__dict__ for review in self.user_reviews],
                 'forum': self.forum.__dict__,
                 'user_rating': self.user_rating.__dict__ if self.user_rating else None,
-                'last_updated': self.last_updated,
+                'last_updated': self.last_updated.strftime('%B %dth %Y, %I:%M%p %Z'),
                 'image': self.image,
                 'genres': list(self.genres),
                 'categories': [category.__dict__ for category in self.categories],
