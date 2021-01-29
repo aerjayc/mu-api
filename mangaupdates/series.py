@@ -1,19 +1,22 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-from functools import cached_property
 import time
-from dataclasses import dataclass, field
-from typing import List, Any
-from mangaupdates import exceptions
 import json
 import dateutil.parser
 
+from functools import cached_property
+from dataclasses import dataclass, field
+from typing import List, Any
 
-@dataclass
-class Group:
-    name: str
-    id: int = None
+from mangaupdates import exceptions
+from .authors import Author
+from .groups import Group
+from .publishers import Publisher, Magazine
+from .tags import Category
+from .users import UserReview, UserRating
+from .utils import remove_outer_parens, params_from_url, id_from_url
+
 
 @dataclass
 class RelatedSeries:
@@ -32,60 +35,10 @@ class Release:
     elapsed: str = None
 
 @dataclass
-class UserReview:
-    id: int
-    reviewer: str
-    name: str
-
-@dataclass
 class ForumStats:
     id: int
     topics: int
     posts: int
-
-@dataclass
-class UserRating:
-    average: float
-    bayesian_average: float
-    votes: int
-    distribution: dict
-
-@dataclass
-class Category:
-    name: str
-    score: int
-    agree: int
-    disagree: int
-
-    def __repr__(self):
-        return (f'Category({repr(self.name)}, score={self.score}, '
-                f'agree={self.agree}, disagree={self.disagree})')
-
-@dataclass
-class Author:
-    name: str
-    id: int
-
-    def __repr__(self):
-        return f'Author({repr(self.name)}, id={self.id})'
-
-@dataclass
-class Publisher:
-    name: str
-    id: int
-    note: str = None
-
-    def __repr__(self):
-        return f'Publisher({repr(self.name)}, id={self.id}, note={repr(self.note)})'
-
-@dataclass
-class Magazine:
-    name: str
-    url: str
-    parent: str = None
-
-    def __repr__(self):
-        return f'Magazine({repr(self.name)}, url={repr(self.url)}, parent={repr(self.parent)})'
 
 @dataclass
 class Rank:
@@ -124,7 +77,7 @@ class Series:
                 Will be overriden by new information provided by the `populate()`
                 method.
         Returns
-            public.Series
+            Series
         """
 
         self.id = id
@@ -261,12 +214,12 @@ class Series:
         """Series related to this series (Spin-offs, etc.)
 
         Yields:
-            - public.RelatedSeries:
-                Series related to this series. Contains a `public.Series` object
+            - RelatedSeries:
+                Series related to this series. Contains a `Series` object
                 and its relation (str).
                 Can be accessed by:
-                    public.RelatedSeries.series     # public.Series object
-                    public.RelatedSeries.relation   # str
+                    RelatedSeries.series     # Series object
+                    RelatedSeries.relation   # str
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -302,10 +255,10 @@ class Series:
         """Other/associated names of the series
 
         Yields:
-            - public.Group:
+            - Group:
                 Group that has scanlated the series.
-                    public.Group.name               # str
-                    public.Group.id                 # int
+                    Group.name               # str
+                    Group.id                 # int
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -327,14 +280,14 @@ class Series:
         """Latest releases of the series
 
         Yields:
-            - public.Release
-                public.Release.series_id            # int/None
-                public.Release.volume               # str/None
-                public.Release.chapter              # str/None
-                public.Release.groups               # list[public.Group]
-                    public.Release.groups.name      # str
-                    public.Release.groups.id        # int
-                public.Release.elapsed              # str
+            - Release
+                Release.series_id            # int/None
+                Release.volume               # str/None
+                Release.chapter              # str/None
+                Release.groups               # list[Group]
+                    Release.groups.name      # str
+                    Release.groups.id        # int
+                Release.elapsed              # str
 
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
@@ -424,10 +377,10 @@ class Series:
         """User Reviews of the series
 
         Yields:
-            - public.UserReview
-                public.UserReview.id                    # int
-                public.UserReview.reviewer              # str
-                public.UserReview.name                  # str
+            - UserReview
+                UserReview.id                    # int
+                UserReview.reviewer              # str
+                UserReview.name                  # str
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -447,10 +400,10 @@ class Series:
         """User Reviews of the series
 
         Returns:
-            - public.ForumStats
-                public.ForumStats.id                # int
-                public.ForumStats.topics            # int
-                public.ForumStats.posts             # int
+            - ForumStats
+                ForumStats.id                # int
+                ForumStats.topics            # int
+                ForumStats.posts             # int
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
             - exceptions.RegexParseError: If HTML content is unexpected
@@ -482,11 +435,11 @@ class Series:
         """User Rating of the series
 
         Returns either:
-            - public.UserRating
-                public.UserRating.average                   # int
-                public.UserRating.bayesian_average          # int
-                public.UserRating.votes                     # int
-                public.UserRating.distribution              # dict
+            - UserRating
+                UserRating.average                   # int
+                UserRating.bayesian_average          # int
+                UserRating.votes                     # int
+                UserRating.distribution              # dict
             - None: If no user ratings
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
@@ -601,11 +554,11 @@ class Series:
         """Categories of the series
 
         Yields:
-            - public.Category
-                public.Category.name                    # str
-                public.Category.score                   # int
-                public.Category.agree                   # int
-                public.Category.disagree                # int
+            - Category
+                Category.name                    # str
+                Category.score                   # int
+                Category.agree                   # int
+                Category.disagree                # int
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
             - exceptions.RegexParseError: If HTML content is unexpected
@@ -633,9 +586,9 @@ class Series:
         """Series recommendations (based on category)
 
         Yields:
-            - public.Series
-                public.Series.id                        # int
-                public.Series.title                     # str
+            - Series
+                Series.id                        # int
+                Series.title                     # str
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -653,9 +606,9 @@ class Series:
         """Series recommendations
 
         Yields:
-            - public.Series
-                public.Series.id                        # int
-                public.Series.title                     # str
+            - Series
+                Series.id                        # int
+                Series.title                     # str
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -684,9 +637,9 @@ class Series:
         """Authors of the series
 
         Yields:
-            - public.Author
-                public.Author.name                          # str
-                public.Author.id                            # int
+            - Author
+                Author.name                          # str
+                Author.id                            # int
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -703,9 +656,9 @@ class Series:
         """Artists of the series
 
         Yields:
-            - public.Author
-                public.Author.name                          # str
-                public.Author.id                            # int
+            - Author
+                Author.name                          # str
+                Author.id                            # int
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -742,9 +695,9 @@ class Series:
         """Original publisher of the series
 
         Returns either:
-            - public.Publisher
-                public.Publisher.id
-                public.Publisher.name
+            - Publisher
+                Publisher.id
+                Publisher.name
             - None: If no publisher listed
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
@@ -771,10 +724,10 @@ class Series:
         """Magazines in which the series was serialized
 
         Yields:
-            - public.Magazine
-                public.Magazine.name                            # str
-                public.Magazine.url                             # str
-                public.Magazine.parent                          # str
+            - Magazine
+                Magazine.name                            # str
+                Magazine.url                             # str
+                Magazine.parent                          # str
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -816,10 +769,10 @@ class Series:
         """English Publisher
 
         Yields:
-            - public.Publisher
-                public.Publisher.name                           # str
-                public.Publisher.id                             # int
-                public.Publisher.note                           # str
+            - Publisher
+                Publisher.name                           # str
+                Publisher.id                             # int
+                Publisher.note                           # str
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -839,14 +792,14 @@ class Series:
         """Activity Stats
 
         Returns:
-            - public.ActivityStats
-                public.ActivityStats.weekly                     # Rank
-                public.ActivityStats.monthly                    # Rank
-                public.ActivityStats.quarterly                  # Rank
-                public.ActivityStats.semiannual                 # Rank
-                public.ActivityStats.yearly                     # Rank
-                    # public.Rank.position              # int
-                    # public.Rank.change                # int
+            - ActivityStats
+                ActivityStats.weekly                     # Rank
+                ActivityStats.monthly                    # Rank
+                ActivityStats.quarterly                  # Rank
+                ActivityStats.semiannual                 # Rank
+                ActivityStats.yearly                     # Rank
+                    # Rank.position              # int
+                    # Rank.change                # int
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -885,12 +838,12 @@ class Series:
         """Series list statistics
 
         Returns:
-            - public.ListStats
-                public.ListStats.id                             # int
-                public.ListStats.reading_total                  # int
-                public.ListStats.wish_total                     # int
-                public.ListStats.unfinished_total               # int
-                public.ListStats.custom_total                   # int
+            - ListStats
+                ListStats.id                             # int
+                ListStats.reading_total                  # int
+                ListStats.wish_total                     # int
+                ListStats.unfinished_total               # int
+                ListStats.custom_total                   # int
         Raises:
             - exceptions.UnpopulatedError: If `.populate()` hasn't been called yet
         """
@@ -984,28 +937,6 @@ class Series:
 
         return json.dumps(data)
 
-def remove_outer_parens(string, strip=True):
-    if strip:
-        string = string.strip()
-    if string.startswith('(') and string.endswith(')'):
-        return string[1:-1]
-    else:
-        return string
-
-# from https://stackoverflow.com/a/5075477
-def params_from_url(url):
-    import urllib.parse as urlparse
-    from urllib.parse import parse_qs
-    parsed = urlparse.urlparse(url)
-    return parse_qs(parsed.query)
-
-def id_from_url(url):
-    params = params_from_url(url)
-    if 'id' in params:
-        return int(params['id'][0])
-    else:
-        return None
-
 class ListStats:
     def __init__(self, id, session=None, **kwargs):
         """Initializes ListStats object
@@ -1019,7 +950,7 @@ class ListStats:
                 Optional. Number of users who added the series on the
                 corresponding list. Used by Series object.
         Returns
-            public.ListStats
+            ListStats
         """
 
         self.id = id
@@ -1067,11 +998,11 @@ class ListStats:
         """Users who have added the series to their list specified by `list_name`
 
         Yields:
-            - public.ListEntry
-                public.ListEntry.series_id                      # int
-                public.ListEntry.user_id                        # int
-                public.ListEntry.username                       # str
-                public.ListEntry.rating                         # float
+            - ListEntry
+                ListEntry.series_id                      # int
+                ListEntry.user_id                        # int
+                ListEntry.username                       # str
+                ListEntry.rating                         # float
             - None: If there are no entries
         """
 
@@ -1096,7 +1027,7 @@ class ListStats:
         """Users who have added the series to their reading list
 
         Yields either:
-            - public.ListEntry
+            - ListEntry
             - None: If there are no entries
         """
 
@@ -1107,7 +1038,7 @@ class ListStats:
         """Users who have added the series to their wish list
 
         Yields either:
-            - public.ListEntry
+            - ListEntry
             - None: If there are no entries
         """
 
@@ -1118,7 +1049,7 @@ class ListStats:
         """Users who have added the series to their unfinished list
 
         Yields either:
-            - public.ListEntry
+            - ListEntry
             - None: If there are no entries
         """
 
