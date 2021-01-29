@@ -111,7 +111,7 @@ class ListEntry:
 class Series:
     domain = 'https://www.mangaupdates.com'
 
-    def __init__(self, id, session=None, tentative_title=None):
+    def __init__(self, id, session=None, title=None):
         """Initializes Series object
 
         Arguments:
@@ -119,7 +119,7 @@ class Series:
             - session (requests.Session):
                 Optional. Session to be used by the Series instance.
                 Defaults to None. If None, a new requests.Session object is used.
-            - tentative_title (str):
+            - title (str):
                 Optional. Title assigned to the series. Defaults to None.
                 Will be overriden by new information provided by the `populate()`
                 method.
@@ -134,15 +134,15 @@ class Series:
         else:
             self._session = session
 
-        if tentative_title is not None:
-            self.title = tentative_title
+        if title is not None:
+            self.title = title
             self._uses_tentative_title = True
         else:
             self._uses_tentative_title = False
 
     def __repr__(self):
         if self._uses_tentative_title:
-            return f'Series(id={self.id}, tentative_title={repr(self.title)})'
+            return f'Series(id={self.id}, title={repr(self.title)})'
         else:
             return f'Series(id={self.id})'
 
@@ -279,7 +279,7 @@ class Series:
             title = a.get_text(strip=True)
             series_id = id_from_url(a['href'])
             relation = remove_outer_parens(a.next_sibling)
-            yield RelatedSeries(series=Series(series_id, tentative_title=title),
+            yield RelatedSeries(series=Series(series_id, title=title),
                                 relation=relation)
 
     @cached_property
@@ -646,7 +646,7 @@ class Series:
         for a in self._entries['Category Recommendations'].find_all('a', href=True):
             series_id = id_from_url(a['href'])
             series_name = a.get_text(strip=True)
-            yield Series(series_id, tentative_title=series_name)
+            yield Series(series_id, title=series_name)
 
     @property
     def recommendations(self):
@@ -675,7 +675,7 @@ class Series:
                 if series_id is None:
                     raise exceptions.ParseError('Recommendations (Series ID)')
                 series_name = a.get_text(strip=True)
-                series = Series(series_id, tentative_title=series_name)
+                series = Series(series_id, title=series_name)
 
                 yield series
 
