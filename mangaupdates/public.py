@@ -278,7 +278,7 @@ class Series:
         for a in a_tags:
             title = a.get_text(strip=True)
             series_id = id_from_url(a['href'])
-            relation = self.remove_outer_parens(a.next_sibling)
+            relation = remove_outer_parens(a.next_sibling)
             yield RelatedSeries(series=Series(series_id, tentative_title=title),
                                 relation=relation)
 
@@ -786,7 +786,7 @@ class Series:
             magazine = Magazine(url=f"{self.domain}/{a['href']}",
                                 name=a.get_text(strip=True))
             if a.next_sibling and a.next_sibling.name is None:
-                magazine.parent = self.remove_outer_parens(a.next_sibling)
+                magazine.parent = remove_outer_parens(a.next_sibling)
             yield magazine
 
     @cached_property
@@ -831,7 +831,7 @@ class Series:
             publisher = Publisher(id=id_from_url(a['href']),
                                   name=a.get_text(strip=True))
             if a.next_sibling and a.next_sibling.name is None:
-                publisher.note = self.remove_outer_parens(a.next_sibling)
+                publisher.note = remove_outer_parens(a.next_sibling)
             yield publisher
 
     @cached_property
@@ -866,7 +866,7 @@ class Series:
 
             img = a.find_next_sibling('img')
             if img and img.next_sibling and img.next_sibling.name is None:
-                rank.change = int(self.remove_outer_parens(img.next_sibling))
+                rank.change = int(remove_outer_parens(img.next_sibling))
 
             if interval == 'Weekly':
                 stats.weekly = rank
@@ -984,14 +984,13 @@ class Series:
 
         return json.dumps(data)
 
-    @staticmethod
-    def remove_outer_parens(string, strip=True):
-        if strip:
-            string = string.strip()
-        if string.startswith('(') and string.endswith(')'):
-            return string[1:-1]
-        else:
-            return string
+def remove_outer_parens(string, strip=True):
+    if strip:
+        string = string.strip()
+    if string.startswith('(') and string.endswith(')'):
+        return string[1:-1]
+    else:
+        return string
 
 # from https://stackoverflow.com/a/5075477
 def params_from_url(url):
