@@ -110,7 +110,7 @@ class Series:
         _ = self._entries
 
         # delete cache
-        cached = ('activity_stats', 'anime_chapters', 'associated_names',
+        cached = ('activity_stats', 'anime_chapters',
                   'completely_scanlated', 'description', 'entries', 'forum',
                   'image', 'last_updated', 'licensed_in_english', 'list_stats',
                   'original_publisher', 'series_type', 'status', 'title',
@@ -235,7 +235,7 @@ class Series:
             yield RelatedSeries(series=Series(series_id, title=title),
                                 relation=relation)
 
-    @cached_property
+    @property
     def associated_names(self):
         """Other/associated names of the series
 
