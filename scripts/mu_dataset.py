@@ -1,4 +1,4 @@
-from mangaupdates import public
+from mangaupdates import Series, ListStats
 import csv
 import pandas as pd
 import time
@@ -57,7 +57,7 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
     print('Lists:', list_names)
 
     for i, sid in enumerate(series_ids):
-        lists = public.ListStats(sid)
+        lists = ListStats(sid)
         print(sid, end='\t\t', flush=True)
         lists.populate(list_names=list_names)
         time.sleep(delay)
