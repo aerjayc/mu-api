@@ -34,7 +34,7 @@ class TestFilledSeries:
                 'Original Publisher', 'Serialized In (magazine)',
                 'Licensed (in English)', 'English Publisher', 'Activity Stats',
                 'List Stats'}
-        assert set(self.filled_series.entries.keys()) == keys
+        assert set(self.filled_series._entries.keys()) == keys
 
     def test_series_type(self):
         assert self.filled_series.series_type == 'Manga'
@@ -75,8 +75,8 @@ class TestFilledSeries:
     def test_image(self):
         self.filled_series.image
 
-    def test_genre(self):
-        self.filled_series.genre
+    def test_genres(self):
+        self.filled_series.genres
 
     def test_categories(self):
         self.filled_series
@@ -88,13 +88,20 @@ class TestFilledSeries:
         self.filled_series.recommendations
 
     def test_authors_is_oda(self):
-        assert self.filled_series.authors == [(31, 'ODA Eiichiro')]
+        authors = list(self.filled_series.authors)
+        assert len(authors) == 1
+        assert authors[0].id == 31
+        assert authors[0].name == 'ODA Eiichiro'
 
     def test_artists_is_oda(self):
-        assert self.filled_series.artists == [(31, 'ODA Eiichiro')]
+        artists = list(self.filled_series.authors)
+        assert len(artists) == 1
+        assert artists[0].id == 31
+        assert artists[0].name == 'ODA Eiichiro'
 
     def test_original_publisher_is_shueisha(self):
-        assert self.filled_series.original_publisher == (163, 'Shueisha')
+        assert self.filled_series.original_publisher.id == 163
+        assert self.filled_series.original_publisher.name == 'Shueisha'
 
     def test_serialized_in(self):
         self.filled_series.serialized_in
