@@ -1,7 +1,19 @@
 import pytest
 import time
-from mangaupdates import Series
+from mangaupdates import Series, exceptions
 
+
+def test_series_id_not_found():
+    sids = [0, -1, 9999999999]
+    for sid in sids:
+        with pytest.raises(exceptions.InvalidSeriesIDError) as e:
+            series = Series(sid)
+            series.populate()
+
+def test_series_not_yet_populated():
+    series = Series(1)
+    with pytest.raises(exceptions.UnpopulatedError) as e:
+        series.title
 
 @pytest.fixture(autouse=True, scope='module')
 def all_series():
