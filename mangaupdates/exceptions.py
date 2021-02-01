@@ -18,3 +18,25 @@ class UnpopulatedError(Exception):
 
     def __init__(self):
         super().__init__("Webpage hasn't been loaded yet. Call `.populate()` first.")
+
+class IDNotFoundError(Exception):
+    """ID not found."""
+
+    def __init__(self):
+        super().__init__(f"{self.name} ID not found.")
+
+class SeriesIDNotFoundError(IDNotFoundError):
+    """Series ID not found."""
+
+    name = "Series"
+
+class InvalidIDError(Exception):
+    """Invalid ID."""
+
+    def __init__(self, message=''):
+        super().__init__(f"Invalid {self.name} ID: {message}")
+
+class InvalidSeriesIDError(InvalidIDError):
+    """Invalid Series ID."""
+
+    name = "Series"

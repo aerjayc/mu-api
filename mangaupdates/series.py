@@ -1,5 +1,5 @@
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 import re
 import time
 import json
@@ -80,6 +80,8 @@ class Series:
             Series
         """
 
+        if id <= 0:
+            raise exceptions.InvalidSeriesIDError(f'id = {id} <= 0 (should be > 0)')
         self.id = id
 
         if session is None:
@@ -106,7 +108,22 @@ class Series:
 
         self._response = self._session.get(f'{self.domain}/series.html', params={'id': self.id})
         self._response.raise_for_status()
+
+        soup = BeautifulSoup(self._response.text, 'lxml')
+        if soup.title.get_text(strip=True) == 'Baka-Updates :: Manga :: Info':
+            raise exceptions.InvalidSeriesIDError
+
+        # check if given series ID exists or redirected to list
+        # happens when id = 0 (it raises an exception from __init__), but idk
+        # if it happens with id > 0, so I'll keep it in
+        if soup.title.get_text(strip=True) == 'Baka-Updates Manga - Series':
+            # make sure (in case series name is "Series")
+            for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
+                if 'Start:Series Rows' == comment.strip():
+                    raise exceptions.SeriesIDNotFoundError
+
         self._main_content = BeautifulSoup(self._response.content, 'lxml').find(id='main_content')
+
         _ = self._entries
 
         # delete cache
