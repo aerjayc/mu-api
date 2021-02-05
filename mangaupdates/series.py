@@ -5,7 +5,7 @@ import time
 import json
 import dateutil.parser
 
-from functools import cached_property
+from functools import cached_property, partial
 from dataclasses import dataclass, field
 from typing import List, Any
 
@@ -633,21 +633,41 @@ class Series:
         if '_entries' not in self.__dict__:
             raise exceptions.UnpopulatedError
 
-        start_of_complete_list = False
-        for a in self._entries['Recommendations'].find_all('a', href=True):
-            if a['href'].startswith('javascript'):  # skips everything before 'More...'
-                if a.get_text(strip=True) == 'More...':
-                    start_of_complete_list = True
-                continue
+        divs = self._entries['Recommendations'].select('#div_recom_more > div')
+        if not divs:
+            return
 
-            if start_of_complete_list:
-                series_id = id_from_url(a['href'])
-                if series_id is None:
-                    raise exceptions.ParseError('Recommendations (Series ID)')
-                series_name = a.get_text(strip=True)
-                series = Series(series_id, title=series_name)
+        # get measure of intensity of the last recommendation
+        try:
+            base_color = divs[-1]['style'].split(':')[1][1:]
+            rgb = base_color[:2], base_color[2:4], base_color[4:]
+            base_intensity = sum(map(partial(int, base=16), rgb))
+        except (KeyError, IndexError):
+            base_intensity = None
 
-                yield series
+        for div in divs:
+            if base_intensity:
+                try:
+                    # get color of entry, remove leading '#'
+                    color = div['style'].split(':')[1][1:]  # hex string
+
+                    # lower intensity = darker shade <-> better recommendation
+                    intensity = sum(map(partial(int, base=16), (color[:2], color[2:4], color[4:])))
+
+                    # base color = lightest shade <-> minimum bar for recommendation
+                    # set base color as 0
+                    level = base_intensity - intensity
+                except (KeyError, IndexError):
+                    level = None
+
+            a = div.a
+            series_id = id_from_url(a['href'])
+            if series_id is None:
+                raise exceptions.ParseError('Recommendations (Series ID)')
+            series_name = a.get_text(strip=True)
+            series = Series(series_id, title=series_name)
+
+            yield (series, level)
 
     @property
     def authors(self):
