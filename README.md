@@ -165,14 +165,13 @@ Banding Together 260 267 7
 
 ```python3
 >>> list(series.recommendations)
-[Series(id=412, title='Hagane no Renkinjutsushi'),
-Series(id=3793, title='Fairy Tail'),
-...]
+[RecommendedSeries(series=Series(id=3793, title='Fairy Tail'), level=78),
+RecommendedSeries(series=Series(id=88, title='Berserk'), level=75), ...]
 >>> for rec in series.recommendations:
-...     print(rec.id, rec.title)
-412 Hagane no Renkinjutsushi
-3793 Fairy Tail
-88 Berserk
+...     print(rec.series.id, rec.series.title, rec.level)
+412 Hagane no Renkinjutsushi 81
+3793 Fairy Tail 78
+88 Berserk 75
 >>> list(series.category_recommendations)
 [Series(id=135409, title='Zhi Mo (Novel)'), Series(id=56545, title='Aronui Mujeokhamdae'),
  Series(id=172424, title='One Piece Episode A'),...
