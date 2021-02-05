@@ -27,6 +27,11 @@ class RelatedSeries:
         return f'RelatedSeries({repr(self.series)}, relation={repr(self.relation)})'
 
 @dataclass
+class RecommendedSeries:
+    series: Any     # `Any` to avoid recursive definition with `Series`
+    level: int
+
+@dataclass
 class Release:
     series_id: int
     volume: str = None
@@ -667,7 +672,7 @@ class Series:
             series_name = a.get_text(strip=True)
             series = Series(series_id, title=series_name)
 
-            yield (series, level)
+            yield RecommendedSeries(series=series, level=level)
 
     @property
     def authors(self):
