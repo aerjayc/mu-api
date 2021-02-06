@@ -149,6 +149,10 @@ class TestSeriesNoExceptions:
         for s in all_series.values():
             s.list_stats
 
+    def test_json(self, all_series):
+        for s in all_series.values():
+            s.json()
+
 class TestSeries33:
     sid = 33
 
