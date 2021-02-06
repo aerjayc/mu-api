@@ -952,9 +952,10 @@ class Series:
                                                      'title': series.title})
 
         data['recommendations'] = []
-        for series in self.recommendations:
-            data['recommendations'].append({'id': series.id,
-                                            'title': series.title})
+        for rec in self.recommendations:
+            data['recommendations'].append({'id': rec.series.id,
+                                            'title': rec.series.title,
+                                            'level': rec.level})
 
         data['latest_releases'] = []
         for release in self.latest_releases:
