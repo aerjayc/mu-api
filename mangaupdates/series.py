@@ -730,7 +730,7 @@ class Series:
         if yr == 'N/A':
             return None
         else:
-            return int(yr)
+            return yr   # not int because of id=118731 (yr='2019-2020')
 
     @cached_property
     def original_publisher(self):
