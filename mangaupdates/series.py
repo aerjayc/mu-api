@@ -5,9 +5,15 @@ import time
 import json
 import dateutil.parser
 
-from functools import cached_property, partial
+from functools import partial
 from dataclasses import dataclass, field
 from typing import List, Any
+try:
+    from functools import cached_property
+except ImportError:
+    from functools import lru_cache
+    def cached_property(f):
+        return property(lru_cache()(f))
 
 from mangaupdates import exceptions
 from .authors import Author
