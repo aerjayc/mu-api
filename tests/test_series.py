@@ -17,12 +17,15 @@ def test_series_not_yet_populated():
 
 @pytest.fixture(autouse=True, scope='module')
 def all_series():
-    sids = [33]
+    sids = [33,         # general testing
+            118731,     # has a non-int year '2015-2019', which previously caused a ValueError
+            108987,     # has a negatively-scored category, which previously caused RegexParseError
+           ]
     series = {}
     for sid in sids:
         series[sid] = Series(sid)
         series[sid].populate()
-        time.sleep(2)
+        time.sleep(1)
 
     yield series
 
