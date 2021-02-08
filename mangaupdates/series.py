@@ -589,14 +589,14 @@ class Series:
         if '_entries' not in self.__dict__:
             raise exceptions.UnpopulatedError
 
-        score_pattern = re.compile(r'Score: (\d+) \((\d+),(\d+)\)', re.IGNORECASE)
+        score_pattern = re.compile(r'Score: (-?\d+) \((\d+),(\d+)\)', re.IGNORECASE)
         for a in self._entries['Categories'].select('li > a[title]'):
             string = a['title']
             matches = re.search(score_pattern, string)
             if not matches:
                 raise exceptions.RegexParseError(pattern=score_pattern.pattern, string=string)
 
-            score = int(matches.group(1))
+            score = int(matches.group(1))   # agree - disagree
             agree = int(matches.group(2))
             disagree = int(matches.group(3))
             name = a.get_text(strip=True)
