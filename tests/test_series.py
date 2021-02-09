@@ -22,10 +22,12 @@ def all_series():
             108987,     # has a negatively-scored category, which previously caused RegexParseError
            ]
     series = {}
-    for sid in sids:
+    for i, sid in enumerate(sids):
         series[sid] = Series(sid)
         series[sid].populate()
-        time.sleep(1)
+
+        if i+1 < len(sids):
+            time.sleep(1)
 
     yield series
 
