@@ -1079,6 +1079,9 @@ class ListStats:
             - None: If there are no entries
         """
 
+        if 'read' not in self._soups:
+            raise exceptions.UnpopulatedError
+
         return self.general_list('read')
 
     @property
@@ -1089,6 +1092,9 @@ class ListStats:
             - ListEntry
             - None: If there are no entries
         """
+
+        if 'wish' not in self._soups:
+            raise exceptions.UnpopulatedError
 
         return self.general_list('wish')
 
@@ -1101,6 +1107,9 @@ class ListStats:
             - None: If there are no entries
         """
 
+        if 'unfinished' not in self._soups:
+            raise exceptions.UnpopulatedError
+
         return self.general_list('unfinished')
 
     @property
@@ -1111,6 +1120,9 @@ class ListStats:
             - ListEntry
             - None: If there are no entries
         """
+
+        if 'complete' not in self._soups:
+            raise exceptions.UnpopulatedError
 
         return self.general_list('complete')
 
@@ -1123,6 +1135,9 @@ class ListStats:
             - None: If there are no entries
         """
 
+        if 'hold' not in self._soups:
+            raise exceptions.UnpopulatedError
+
         return self.general_list('hold')
 
     def json(self):
@@ -1131,6 +1146,9 @@ class ListStats:
         Returns:
             - str
         """
+
+        if not self._soups:
+            raise exceptions.UnpopulatedError
 
         data = {'series_id': self.id}
         for key in self._soups.keys():
