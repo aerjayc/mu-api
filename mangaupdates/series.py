@@ -1029,13 +1029,14 @@ class ListStats:
                   'sid': self.id}
 
         self._soups = {}
-        for list_name in list_names:
+        for i, list_name in enumerate(list_names):
             params['list'] = list_name
             response = self._session.get(url, params=params)
             response.raise_for_status()
-            time.sleep(delay)
-
             self._soups[list_name] = BeautifulSoup(response.content, 'lxml')
+
+            if i+1 < len(list_names):
+                time.sleep(delay)
 
     def general_list(self, list_name):
         """Users who have added the series to their list specified by `list_name`
