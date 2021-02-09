@@ -1022,7 +1022,7 @@ class ListStats:
 
         # https://www.mangaupdates.com/series.html?act=list&list=read&sid=33
         if list_names is None:
-            list_names = ('read', 'wish', 'unfinished')
+            list_names = ('read', 'wish', 'unfinished', 'complete', 'hold')
 
         url = 'https://www.mangaupdates.com/series.html'
         params = {'act': 'list',
@@ -1051,7 +1051,7 @@ class ListStats:
 
         rows = self._soups[list_name].p.find_next_sibling('p')
         if not rows:
-            return None
+            return
 
         prefix = 'javascript:loadUser(' # for extracting the user id
         suffix = f',"{list_name}")'
@@ -1066,8 +1066,8 @@ class ListStats:
             yield entry
 
     @property
-    def read(self):
-        """Users who have added the series to their reading list
+    def reading(self):
+        """Users who have added the series to their Reading List
 
         Yields either:
             - ListEntry
@@ -1078,7 +1078,7 @@ class ListStats:
 
     @property
     def wish(self):
-        """Users who have added the series to their wish list
+        """Users who have added the series to their Wish List
 
         Yields either:
             - ListEntry
@@ -1089,7 +1089,7 @@ class ListStats:
 
     @property
     def unfinished(self):
-        """Users who have added the series to their unfinished list
+        """Users who have added the series to their Unfinished List
 
         Yields either:
             - ListEntry
@@ -1097,6 +1097,28 @@ class ListStats:
         """
 
         return self.general_list('unfinished')
+
+    @property
+    def complete(self):
+        """Users who have added the series to their Complete List
+
+        Yields either:
+            - ListEntry
+            - None: If there are no entries
+        """
+
+        return self.general_list('complete')
+
+    @property
+    def on_hold(self):
+        """Users who have added the series to their On Hold List
+
+        Yields either:
+            - ListEntry
+            - None: If there are no entries
+        """
+
+        return self.general_list('hold')
 
     def json(self):
         """Export ListStats object as json
