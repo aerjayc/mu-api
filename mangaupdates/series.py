@@ -1132,11 +1132,10 @@ class ListStats:
             - str
         """
 
-        data = {}
-        for key in ('read', 'wish', 'unfinished'):
+        data = {'series_id': self.id}
+        for key in self._soups.keys():
             data[key] = []
-            for l in getattr(self, key):
-                data[key].append({'id': l.series_id,
-                                  'user_id': l.user_id,
+            for l in self.general_list(key):
+                data[key].append({'user_id': l.user_id,
                                   'username': l.username})
-        return data
+        return json.dumps(data)
