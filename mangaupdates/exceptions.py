@@ -1,5 +1,6 @@
 class ParseError(Exception):
     """HTML parsing failure (unexpected data)"""
+
     pass
 
 class RegexParseError(ParseError):
@@ -40,3 +41,8 @@ class InvalidSeriesIDError(InvalidIDError):
     """Invalid Series ID."""
 
     name = "Series"
+
+class InvalidListNameError(Exception):
+    """Invalid List Name"""
+
+    pass

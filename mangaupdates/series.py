@@ -1034,7 +1034,10 @@ class ListStats:
             params['list'] = list_name
             response = self._session.get(url, params=params)
             response.raise_for_status()
-            self._soups[list_name] = BeautifulSoup(response.content, 'lxml')
+            soup = BeautifulSoup(response.content, 'lxml')
+            if soup.head.title.get_text(strip=True) == 'Baka-Updates :: Manga :: Info':
+                raise exceptions.InvalidListNameError(repr(list_name), 'is an invalid list name.')
+            self._soups[list_name] = soup
 
             if i+1 < len(list_names):
                 time.sleep(delay)
