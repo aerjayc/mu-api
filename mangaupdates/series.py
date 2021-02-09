@@ -1003,6 +1003,8 @@ class ListStats:
         else:
             self._session = session
 
+        self._soups = {}
+
         self.reading_total = kwargs.get('reading_total')
         self.wish_total = kwargs.get('wish_total')
         self.unfinished_total = kwargs.get('unfinished_total')
@@ -1028,7 +1030,6 @@ class ListStats:
         params = {'act': 'list',
                   'sid': self.id}
 
-        self._soups = {}
         for i, list_name in enumerate(list_names):
             params['list'] = list_name
             response = self._session.get(url, params=params)
