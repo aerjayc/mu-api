@@ -1074,6 +1074,10 @@ class ListStats:
     def reading(self):
         """Users who have added the series to their Reading List
 
+        The definition of this list, in terms of what series are added to it:
+            "You are currently reading these series."
+        (from https://www.mangaupdates.com/mylist.html?list=read)
+
         Yields either:
             - ListEntry
             - None: If there are no entries
@@ -1087,6 +1091,10 @@ class ListStats:
     @property
     def wish(self):
         """Users who have added the series to their Wish List
+
+        The definition of this list, in terms of what series are added to it:
+            "You want to read this series eventually."
+        (from https://www.mangaupdates.com/mylist.html?list=wish)
 
         Yields either:
             - ListEntry
@@ -1102,6 +1110,10 @@ class ListStats:
     def unfinished(self):
         """Users who have added the series to their Unfinished List
 
+        The definition of this list, in terms of what series are added to it:
+            "You decided not to finish these series."
+        (from https://www.mangaupdates.com/mylist.html?list=unfinished)
+
         Yields either:
             - ListEntry
             - None: If there are no entries
@@ -1116,6 +1128,10 @@ class ListStats:
     def complete(self):
         """Users who have added the series to their Complete List
 
+        The definition of this list, in terms of what series are added to it:
+            "You have completely finished these series."
+        (from https://www.mangaupdates.com/mylist.html?list=complete)
+
         Yields either:
             - ListEntry
             - None: If there are no entries
@@ -1129,6 +1145,10 @@ class ListStats:
     @property
     def on_hold(self):
         """Users who have added the series to their On Hold List
+
+        The definition of this list, in terms of what series are added to it:
+            "You think you might finish this later."
+        (from https://www.mangaupdates.com/mylist.html?list=hold)
 
         Yields either:
             - ListEntry
