@@ -20,6 +20,7 @@ def all_series():
     sids = [33,         # general testing
             118731,     # has a non-int year '2015-2019', which previously caused a ValueError
             108987,     # has a negatively-scored category, which previously caused RegexParseError
+            113682,     # has an undecodable character in its description (this was found thanks to testing the top 2k series, for the record)
            ]
     series = {}
     for i, sid in enumerate(sids):

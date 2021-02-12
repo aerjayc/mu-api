@@ -127,7 +127,7 @@ class Series:
                 if 'Start:Series Rows' == comment.strip():
                     raise exceptions.SeriesIDNotFoundError
 
-        self._main_content = BeautifulSoup(self._response.content, 'lxml').find(id='main_content')
+        self._main_content = BeautifulSoup(self._response.content, 'html.parser').find(id='main_content')
 
         _ = self._entries
 
