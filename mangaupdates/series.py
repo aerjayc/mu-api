@@ -651,6 +651,7 @@ class Series:
             base_intensity = None
 
         for div in divs:
+            level = None
             if base_intensity:
                 try:
                     # get color of entry, remove leading '#'
@@ -663,7 +664,7 @@ class Series:
                     # set base color as 0
                     level = base_intensity - intensity
                 except (KeyError, IndexError):
-                    level = None
+                    pass
 
             a = div.a
             series_id = id_from_url(a['href'])
