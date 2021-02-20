@@ -22,7 +22,7 @@ CONNECTION_ERROR_DELAY = 90
 
 def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n'):
 
-    col_names = ('userid', 'username', 'score', 'listname', 'seriesid')
+    col_names = ('user_id', 'username', 'score', 'list_name', 'series_id')
     resuming = False
     if filename is not None:
         write_col_names = True
@@ -186,15 +186,13 @@ if __name__ == '__main__':
         csvreader = csv.reader(csvfile)
         if args.headers:
             header_names = next(csvreader)
-            if 'seriesid' in header_names:
-                header = 'seriesid'
-            elif 'series_id' in header_names:
+            if 'series_id' in header_names:
                 header = 'series_id'
             else:
-                print('Error: No "seriesid" or "series_id" header in', args.INPUT)
+                print('Error: No "series_id" header in', args.INPUT)
                 csvfile.close()
                 exit(-1)
-            sid_index = header_names.index('seriesid')
+            sid_index = header_names.index('series_id')
         else:
             sid_index = 0
 
