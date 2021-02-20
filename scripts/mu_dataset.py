@@ -1,3 +1,10 @@
+import importlib.util
+import sys
+spec = importlib.util.spec_from_file_location('mangaupdates', 'mangaupdates/__init__.py')
+mangaupdates = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = mangaupdates
+spec.loader.exec_module(mangaupdates)
+
 from mangaupdates import Series, ListStats
 import csv
 import pandas as pd
@@ -5,6 +12,12 @@ import time
 import os
 import os.path
 import argparse
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+MAX_RETRIES = 5
+CONNECTION_ERROR_DELAY = 90
 
 
 def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n'):
@@ -21,7 +34,7 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
                 print(filename, 'exists. Rows will be appended.')
                 resuming = True
                 write_col_names = False
-                
+
                 # get latest sid in final line
                 # https://stackoverflow.com/a/54278929
                 with open(filename, 'rb') as f:
@@ -45,7 +58,7 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
             mode = 'w'
         f = open(filename, mode, newline='')
         writer = csv.writer(f)
-        
+
         if write_col_names:
             writer.writerows([col_names])
 
@@ -53,13 +66,26 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
         rows = []
 
     if list_names is None:
-        list_names = ('read', 'wish', 'unfinished')
+        list_names = ('read', 'wish', 'unfinished', 'complete', 'hold')
     print('Lists:', list_names)
 
+    sess = requests.Session()
+    retries = Retry(total=MAX_RETRIES, backoff_factor=3)
+    sess.mount('http://', HTTPAdapter(max_retries=retries))
     for i, sid in enumerate(series_ids):
-        lists = ListStats(sid)
+        lists = ListStats(sid, session=sess)
         print(sid, end='\t\t', flush=True)
-        lists.populate(list_names=list_names)
+        for _ in range(MAX_RETRIES):
+            try:
+                lists.populate(list_names=list_names)
+                break
+            except requests.exceptions.ConnectionError as e:
+                print(e)
+                print('Retrying...')
+                time.sleep(CONNECTION_ERROR_DELAY)
+        else:       # no break
+            print('Skipping', sid, '(exceeded MAX_RETRIES)')
+            continue
         time.sleep(delay)
 
 
@@ -76,7 +102,7 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
                 # Thus, we assume that if the last entry on the file has
                 # some series id `last_sid` and list name `last_list_name`, we
                 # can simply skip all entries before that.
-            new_rows = [(*val, key, sid) for val in lists.general_list(key)]
+            new_rows = [(val.user_id, val.username, val.rating, key, sid) for val in lists.general_list(key)]
             print(key, f'{len(new_rows)} rows.', sep='\t')
             if filename is None:
                 rows.extend(new_rows)
@@ -114,11 +140,26 @@ if __name__ == '__main__':
     parser.add_argument('--resume', action='store_true',
                         help="equivalent to mode='a'. resumes progress if stopped"
                         " previously. overrides --force.")
+    parser.add_argument('-d', '--delay', default=10,
+                        help='# of seconds of delay between GET requests.')
+    parser.add_argument('--listnames', default='rwuch')
     args = parser.parse_args()
 
     list_names = ['read']
-    if args.all:
-        list_names.extend(['wish', 'unfinished'])
+    if set(args.listnames) != set('rwuch'):
+        list_names = []
+        if 'r' in args.listnames:
+            list_names.append('read')
+        if 'w' in args.listnames:
+            list_names.append('wish')
+        if 'u' in args.listnames:
+            list_names.append('unfinished')
+        if 'c' in args.listnames:
+            list_names.append('complete')
+        if 'h' in args.listnames:
+            list_names.append('hold')
+    elif args.all:
+        list_names.extend(['wish', 'unfinished', 'complete', 'hold'])
 
     mode = args.mode
     if args.resume:
@@ -128,6 +169,7 @@ if __name__ == '__main__':
 
     # Get unique series IDs from file
     series_ids = []
+    N_done = 0
     with open(args.input, 'r', newline='') as csvfile:
         csvreader = csv.reader(csvfile)
         if args.headers:
@@ -151,5 +193,5 @@ if __name__ == '__main__':
             if sid not in series_ids:
                 series_ids.append(sid)
 
-    make_dataset(series_ids, filename=args.output, delay=10, mode=mode,
+    make_dataset(series_ids, filename=args.output, delay=args.delay, mode=mode,
                  list_names=list_names)
