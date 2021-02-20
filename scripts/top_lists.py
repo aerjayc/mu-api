@@ -1,13 +1,21 @@
+import importlib.util
+import sys
+spec = importlib.util.spec_from_file_location('mangaupdates', 'mangaupdates/__init__.py')
+mangaupdates = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = mangaupdates
+spec.loader.exec_module(mangaupdates)
+
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
-from mangaupdates.utils import id_from_url
+import argparse
 import time
 import csv
+import os
 
 
-def get_most_listed(min_num_users=1, first_page=1, max_pages=None, delay=10, list_names=None, filename=None, MAX_RETRIES=5):
+def get_most_listed(min_num_users=1, first_page=1, max_pages=None, delay=10, list_names=None, filename=None, MAX_RETRIES=5, force=False):
     """Extracts most-listed series on the site.
 
     Arguments:
@@ -33,9 +41,18 @@ def get_most_listed(min_num_users=1, first_page=1, max_pages=None, delay=10, lis
         list_names = ('read', 'wish', 'unfinished', 'completed', 'hold')
 
     if filename is not None:
-        f = open(filename, 'a', newline='')
+        mode = 'a'
+        write_header = True
+        if os.path.isfile(filename):
+            if force:
+                mode = 'w'
+            else:
+                write_header = False
+
+        f = open(filename, mode, newline='')
         writer = csv.writer(f)
-        writer.writerow(['series_id', 'series_name', 'num_users', 'list_name'])
+        if write_header:
+            writer.writerow(['series_id', 'series_name', 'num_users', 'list_name'])
     else:
         lists = []
 
@@ -45,7 +62,7 @@ def get_most_listed(min_num_users=1, first_page=1, max_pages=None, delay=10, lis
     for list_name in list_names:
         page = first_page
         num_users = min_num_users   # just to pass through first iteration
-        while (max_pages is None and num_users >= min_num_users) or (max_pages is not None and page <= max_pages):
+        while (max_pages is None and num_users >= min_num_users) or (max_pages is not None and (page - first_page) < max_pages):
             params = {'list': list_name,
                       'act': 'list',
                       'perpage': 100,
@@ -80,7 +97,7 @@ def get_most_listed(min_num_users=1, first_page=1, max_pages=None, delay=10, lis
                     # This is likely a bug since series_id != list_id, so it
                     # links to a different list (often it doesn't exist)
                 elif 'col-11' in cell['class']: # series_name + id
-                    series_id = id_from_url(cell.a['href'])
+                    series_id = mangaupdates.utils.id_from_url(cell.a['href'])
                     series_name = cell.a.get_text(strip=True)
 
                     # end of row
@@ -105,3 +122,45 @@ def get_most_listed(min_num_users=1, first_page=1, max_pages=None, delay=10, lis
         f.close()
     else:
         return lists
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(metavar='OUTPUT', dest='output',
+                        help='CSV file to be output, containing series')
+    parser.add_argument('-p', '--max-pages', dest='max_pages', default=1)
+    parser.add_argument('--list-names', dest='list_names', default='rwcu')
+    parser.add_argument('--start-page', dest='start_page', default=1)
+    parser.add_argument('-f', '--force', action='store_true',
+                        help='overwrite output file if it exists')
+    parser.add_argument('-a', '--append', action='store_true',
+                        help='append new lines to the CSV file instead of overwriting')
+    args = parser.parse_args()
+
+    if os.path.isfile(args.output):
+        print(repr(args.output), 'exists.', end=' ')
+        if args.append:
+            print('Appending...')
+        elif args.force:
+            print('Overwriting...')
+        else:
+            print('Aborting...')
+            exit(-1)
+
+    list_names = ['read', 'wish', 'complete', 'unfinished']
+    if set(args.list_names).issubset('rwcu'):
+        list_names = []
+        if 'r' in args.list_names:
+            list_names.append('read')
+        if 'w' in args.list_names:
+            list_names.append('wish')
+        if 'c' in args.list_names:
+            list_names.append('complete')
+        if 'u' in args.list_names:
+            list_names.append('unfinished')
+    else:
+        print('--list-names', args.list_names, 'is invalid. Aborting...')
+        exit(-1)
+
+    get_most_listed(first_page=int(args.start_page), max_pages=int(args.max_pages),
+                    list_names=list_names, filename=args.output, force=args.force)
