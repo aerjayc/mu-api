@@ -146,7 +146,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     list_names = ['read']
-    if set(args.listnames) != set('rwuch'):
+    if args.all:
+        list_names.extend(['wish', 'unfinished', 'complete', 'hold'])
+    elif set(args.listnames).issubset('rwuch'):
         list_names = []
         if 'r' in args.listnames:
             list_names.append('read')
@@ -158,8 +160,9 @@ if __name__ == '__main__':
             list_names.append('complete')
         if 'h' in args.listnames:
             list_names.append('hold')
-    elif args.all:
-        list_names.extend(['wish', 'unfinished', 'complete', 'hold'])
+    else:
+        print('--listnames', args.listnames, 'is invalid. Aborting...')
+        exit(-1)
 
     mode = args.mode
     if args.resume:
