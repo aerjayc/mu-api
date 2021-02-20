@@ -2,7 +2,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
-from .utils import id_from_url
+from mangaupdates.utils import id_from_url
 import time
 import csv
 
