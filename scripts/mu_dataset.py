@@ -72,42 +72,52 @@ def make_dataset(series_ids, filename=None, delay=10, list_names=None, mode='n')
     sess = requests.Session()
     retries = Retry(total=MAX_RETRIES, backoff_factor=3)
     sess.mount('http://', HTTPAdapter(max_retries=retries))
-    for i, sid in enumerate(series_ids):
-        lists = ListStats(sid, session=sess)
-        print(sid, end='\t\t', flush=True)
-        for _ in range(MAX_RETRIES):
-            try:
-                lists.populate(list_names=list_names)
-                break
-            except requests.exceptions.ConnectionError as e:
-                print(e)
-                print('Retrying...')
-                time.sleep(CONNECTION_ERROR_DELAY)
-        else:       # no break
-            print('Skipping', sid, '(exceeded MAX_RETRIES)')
-            continue
-        time.sleep(delay)
+    loaded = False
+    try:
+        for i, sid in enumerate(series_ids):
+            loaded = False
+            lists = ListStats(sid, session=sess)
+            print(sid, end='\t\t', flush=True)
+            for _ in range(MAX_RETRIES):
+                try:
+                    lists.populate(list_names=list_names)
+                    break
+                except requests.exceptions.ConnectionError as e:
+                    print(e)
+                    print('Retrying...')
+                    time.sleep(CONNECTION_ERROR_DELAY)
+            else:       # no break
+                print('Skipping', sid, '(exceeded MAX_RETRIES)')
+                continue
 
 
-        for key in list_names:
-            if resuming and i == 0:
-                if list_names.index(key) <= list_names.index((last_list_name)):
-                    print('0 rows (resuming).')
-                    continue
-                resuming = False
-                # Since this program only writes to the file every iteration of
-                # a list of a series, we know that on the previous run, the
-                # program probably stopped between (instead of in the middle
-                # of) writing to the file.
-                # Thus, we assume that if the last entry on the file has
-                # some series id `last_sid` and list name `last_list_name`, we
-                # can simply skip all entries before that.
-            new_rows = [(val.user_id, val.username, val.rating, key, sid) for val in lists.general_list(key)]
-            print(key, f'{len(new_rows)} rows.', sep='\t')
-            if filename is None:
-                rows.extend(new_rows)
-            else:
-                writer.writerows(new_rows)
+            for key in list_names:
+                if resuming and i == 0:
+                    if list_names.index(key) <= list_names.index((last_list_name)):
+                        print('0 rows (resuming).')
+                        continue
+                    resuming = False
+                    # Since this program only writes to the file every iteration of
+                    # a list of a series, we know that on the previous run, the
+                    # program probably stopped between (instead of in the middle
+                    # of) writing to the file.
+                    # Thus, we assume that if the last entry on the file has
+                    # some series id `last_sid` and list name `last_list_name`, we
+                    # can simply skip all entries before that.
+                new_rows = [(val.user_id, val.username, val.rating, key, sid) for val in lists.general_list(key)]
+                print(key, f'{len(new_rows)} rows.', sep='\t')
+                if filename is None:
+                    rows.extend(new_rows)
+                else:
+                    writer.writerows(new_rows)
+            loaded = True
+            time.sleep(delay)
+    except (KeyboardInterrupt, requests.exceptions.ConnectionError) as e:
+        print('\n', e, sep='')
+        if loaded:
+            print("Stopped after loading", sid)
+        else:
+            print("Stopped before loading", sid)
 
     if filename is not None:
         f.close()
@@ -172,7 +182,6 @@ if __name__ == '__main__':
 
     # Get unique series IDs from file
     series_ids = []
-    N_done = 0
     with open(args.input, 'r', newline='') as csvfile:
         csvreader = csv.reader(csvfile)
         if args.headers:
